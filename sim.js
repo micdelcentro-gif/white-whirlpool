@@ -1185,14 +1185,9 @@ const R2 = Math.PI / 2;
 
 // FÍSICA REAL DE ABATIMIENTO CONTROLADO (Pick & Tilt):
 // El hook drop se controla dinámicamente para mantener clearance ≥ 0.30m
-// con la tubería contraincendio (y=7.80m).
-// A medida que el Expander gira de vertical→horizontal, el lug superior
-// baja: h_lug(θ) = 0.5 + 6.0×cos(θ)
-// El hook Liebherr SE AJUSTA para estar siempre sobre el lug superior.
+// H_TUBERIA_CI y H_CLEARANCE_MIN declaradas arriba (líneas ~726).
 // La operación COMPLETA llega a θ=90° (horizontal) sobre la base rodante.
 
-const H_TUBERIA_CI = 7.8; // m — límite real de clearance
-const H_CLEARANCE_MIN = 0.30; // m — margen mínimo de seguridad
 let ceilingCollision = false;
 let simlogErrors = [];  // registro de errores tipo Simlog
 let kpiStartTime = null;
