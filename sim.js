@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { simExpander, liftTable, normativeAlerts, DESIGN_FACTOR, MAX_UTILIZATION, MIN_CLEARANCE_M } from './physics.js';
 
 // ── RENDERER — configuración PBR nivel industrial ──
 const canvas = document.getElementById('canvas');
@@ -1339,86 +1340,49 @@ function updateUI(pid) {
             `⚠️ ${angleDegNow}° — CARGA SUSPENDIDA. Montacargas controla pivote.`;
     } else { ab.style.display = 'none'; }
 
-    // ── FÍSICA REAL: Pick & Tilt — Equilibrio de Momentos (ISO 12480 / NOM-006-STPS) ──
-    // Expander: L=7.60m, CG=3.80m (50%), masa=17,557 kg
-    // Liebherr LTM 1050: radio=4.0m → Cap=18,144 kg
-    // VersaLift (montacargas + boom): controla pivote inferior (lug y=2.0m)
-    // Factor de diseño FD=1.10 (OSHA 29 CFR 1910.180)
-    // Límite operativo: 80% cap nominal (Walmart/OSHA)
+    // ── FÍSICA: lookup en tabla precomputada por physics.js (Pick & Tilt engine) ──
+    // liftTable tiene 12 pasos de 0°→90°. Interpolamos el paso más cercano al ángulo actual.
 
-    const rot = S.rot ?? 0;
-    const theta = rot;  // 0=vertical → PI/2=horizontal
+    const rot      = S.rot ?? 0;
+    const theta    = rot;
     const angleDeg = Math.round(theta * 180 / Math.PI);
 
-    const TOTAL  = 17557;    // kg — peso real
-    const FD     = 1.10;     // factor de diseño
-    const PESO_DISENO = Math.round(TOTAL * FD); // 19,313 kg --- peso de diseño
-    const L_EQ   = 7.60;    // m
-    const CG_BASE= 3.80;    // m
-    const LUG_S  = 6.0;     // m — lug superior
-    const LUG_I  = 2.0;     // m — lug inferior
-    const D_LUGS = LUG_S - LUG_I;  // 4.0 m
-    const D_CG_I = CG_BASE - LUG_I; // 1.80 m
-    const CAP_LB = 18144;   // kg — Liebherr LTM 1050 @ 4.0m
-    const CAP_MC = 3629;    // kg — boom fork ~8,000 lb WLL
-    const RADIO  = 4.0;     // m — radio de operación Liebherr
-    const MASA_GRUA = 36000; // kg — masa Liebherr LTM 1050 (aprox.)
-    const OUT_SPAN  = 6.0;  // m — semiancho entre outriggers
-
     let titanKg = 0, versaKg = 0, titanUtil = 0, versaUtil = 0;
-    let slingTension = 0, hookClearance = 0, hAltura = 0;
-    let groundPressure = 0; // kN/m² — presión en outriggers
+    let slingTension = 0, hookClearance = 0, hAltura = 0, groundPressure = 0;
 
     if (pid >= 3 && pid <= 9) {
-        // Distribución de carga por equilibrio de momentos (Pick & Tilt)
-        // liebherrFrac: fracción del peso absorbe Liebherr según ángulo
-        // Cuando θ=0° (vertical): Liebherr soporta mínimo (CG bajo; pivote en base)
-        // Cuando θ=90° (horiz.): Liebherr = W×CG/LUG_S = 17557×3.80/6.0 = 11,120 kg
-        const liebherrFrac = Math.sin(theta) * (CG_BASE / LUG_S) +
-                             Math.cos(theta) * (D_CG_I / D_LUGS);
-        const versaFrac = Math.max(0, 1 - liebherrFrac);
+        // Encontrar fila más cercana en liftTable según ángulo actual
+        const row = liftTable.reduce((best, r) =>
+            Math.abs(r.angle_deg - angleDeg) < Math.abs(best.angle_deg - angleDeg) ? r : best
+        , liftTable[0]);
 
-        titanKg   = Math.round(TOTAL * liebherrFrac);
-        versaKg   = Math.round(TOTAL * versaFrac);
-        titanUtil = Math.round((titanKg / CAP_LB) * 100);
-        versaUtil = Math.round((versaKg / CAP_MC) * 100);
-
-        // Tensión en eslingas (2 ramales, apertura 50°)
-        const slingRad = 50 * Math.PI / 180;
-        slingTension = Math.round(titanKg / (2 * Math.cos(slingRad)));
-
-        // Altura del lug superior del Expander en el mundo
-        hAltura = 0.5 + LUG_S * Math.cos(theta);
+        titanKg      = row.liebherr_kg;
+        versaKg      = row.versa_kg;
+        titanUtil    = Math.round(row['liebherr_%']);
+        versaUtil    = Math.round(row['versa_%']);
+        slingTension = row.sling_tension_kg;
+        hAltura      = row.h_lug_sup_m;
+        groundPressure = row.gbp_kPa;   // ya en kPa desde physics.js
 
         // Clearance vs tubería contraincendio (y=7.80m)
-        // El bloque del gancho está aprox. a hAltura + 0.30m (eslinga)
         hookClearance = Math.max(0, H_TUBERIA_CI - (hAltura + 0.30));
 
-        // Ground Bearing Pressure — carga en outriggers del Liebherr
-        // F_outrigger = (MASA_GRUA + titanKg×FD) × 9.81 / (4 × pad_area)
-        // Pad area aprox 0.64m² (800×800mm)
-        const F_total_kN = (MASA_GRUA + titanKg * FD) * 9.81 / 1000;
-        const padArea = 0.64; // m²
-        groundPressure = Math.round(F_total_kN / (4 * padArea)); // kN/m²
-
-        // ── SIMLOG ERROR DETECTION ──
+        // ── SIMLOG ERROR DETECTION vía physics.js ──
         if (isPlaying) {
-            // FATAL: utilización > 95%
-            if (titanUtil > 95) {
-                simlogErrors.push({ type: 'FATAL', msg: `Liebherr ${titanUtil}% — SOBRECARGA`, phase: pid });
-            }
-            // PROCEDURE: utilización > 80% (límite OSHA)
-            else if (titanUtil > 80 && !simlogErrors.find(e => e.type === 'PROCEDURE' && e.phase === pid)) {
-                simlogErrors.push({ type: 'PROCEDURE', msg: `Liebherr ${titanUtil}% supera 80% límite OSHA`, phase: pid });
-            }
-            // PERFORMANCE: Ground pressure > 300 kN/m²
-            if (groundPressure > 300 && !simlogErrors.find(e => e.type === 'PERFORMANCE' && e.phase === pid)) {
-                simlogErrors.push({ type: 'PERFORMANCE', msg: `GBP ${groundPressure} kN/m² — revisar terreno`, phase: pid });
+            const status = row.status;
+            const already = (t) => simlogErrors.some(e => e.type === t && e.phase === pid);
+            if (status === 'FATAL' && !already('FATAL')) {
+                simlogErrors.push({ type: 'FATAL',       msg: `SOBRECARGA: Liebherr ${titanUtil}% (>95%). DETENER.`,    phase: pid });
+            } else if (status === 'PROCEDURE' && !already('PROCEDURE')) {
+                simlogErrors.push({ type: 'PROCEDURE',   msg: `OSHA: Liebherr ${titanUtil}% supera límite 80%.`,       phase: pid });
+            } else if (status === 'PERFORMANCE' && !already('PERFORMANCE')) {
+                simlogErrors.push({ type: 'PERFORMANCE', msg: `GBP ${groundPressure} kPa — verificar terreno.`,        phase: pid });
             }
         }
     }
 
     // ── ACTUALIZAR UI ──
+    const TOTAL_W = 17557; // referencia para % display
     document.getElementById('s-angle').textContent = angleDeg + '° ' + (pid >= 8 ? '✅ HORIZ.' : pid >= 4 ? '🔄' : '');
     document.getElementById('s-titan-load').textContent = titanKg > 0 ? titanKg.toLocaleString() + ' kg' : '—';
 
@@ -1431,9 +1395,10 @@ function updateUI(pid) {
     document.getElementById('s-versa-load').textContent = versaKg > 0 ? versaKg.toLocaleString() + ' kg' : '—';
     document.getElementById('s-versa-util').textContent = versaUtil > 0 ? versaUtil + '% ⚙️ctrl' : '—';
     document.getElementById('s-split').textContent = pid >= 3 && pid <= 9
-        ? Math.round(titanKg / TOTAL * 100) + '% / ' + Math.round(versaKg / TOTAL * 100) + '%' : '—';
+        ? Math.round(titanKg / TOTAL_W * 100) + '% / ' + Math.round(versaKg / TOTAL_W * 100) + '%' : '—';
     document.getElementById('s-forks').textContent = slingTension > 0
         ? slingTension.toLocaleString() + ' kg' : '—';
+
 
     // Clearance display
     const clr = document.getElementById('s-interf');
