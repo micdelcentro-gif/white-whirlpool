@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guía de Estudio — SimuLift Pro</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080d1a;
+    --surface: #0f1629;
+    --surface2: #162040;
+    --border: #1e2d50;
+    --accent: #3b82f6;
+    --accent2: #06b6d4;
+    --accent3: #8b5cf6;
+    --green: #10b981;
+    --red: #ef4444;
+    --yellow: #f59e0b;
+    --text: #e2e8f0;
+    --text2: #94a3b8;
+    --text3: #64748b;
+    --radius: 14px;
+    --radius-sm: 8px;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+
+  /* BACKGROUND GLOW */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse 80% 50% at 20% 10%, rgba(59,130,246,0.07) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 80% 80%, rgba(139,92,246,0.06) 0%, transparent 60%);
+    pointer-events: none; z-index: 0;
+  }
+
+  /* HERO */
+  .hero {
+    position: relative;
+    padding: 64px 24px 48px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(59,130,246,0.05) 0%, transparent 100%);
+  }
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(59,130,246,0.12); border: 1px solid rgba(59,130,246,0.3);
+    color: var(--accent); border-radius: 999px;
+    padding: 6px 16px; font-size: 12px; font-weight: 600;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    margin-bottom: 24px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 5vw, 52px);
+    font-weight: 900; letter-spacing: -0.02em;
+    background: linear-gradient(135deg, #e2e8f0 0%, #94a3b8 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 12px;
+  }
+  .hero-sub {
+    font-size: 16px; color: var(--text2); max-width: 600px; margin: 0 auto 32px;
+  }
+
+  /* NAV TABS */
+  .nav-tabs {
+    display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;
+    padding: 0 24px;
+  }
+  .nav-btn {
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--text2); padding: 10px 22px; border-radius: 999px;
+    cursor: pointer; font-size: 13px; font-weight: 500;
+    transition: all 0.2s; font-family: inherit;
+    position: relative; overflow: hidden;
+  }
+  .nav-btn:hover { border-color: var(--accent); color: var(--text); }
+  .nav-btn.active {
+    background: var(--accent); border-color: var(--accent);
+    color: #fff; font-weight: 600;
+    box-shadow: 0 0 20px rgba(59,130,246,0.4);
+  }
+
+  /* LAYOUT */
+  .container {
+    max-width: 900px; margin: 0 auto;
+    padding: 40px 20px 80px;
+    position: relative; z-index: 1;
+  }
+
+  /* SECTION */
+  .section { display: none; }
+  .section.active { display: block; animation: fadeIn 0.3s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* SECTION HEADER */
+  .section-header {
+    margin-bottom: 32px;
+  }
+  .section-title {
+    font-size: 26px; font-weight: 800; letter-spacing: -0.01em;
+    margin-bottom: 6px;
+  }
+  .section-desc { color: var(--text2); font-size: 14px; }
+
+  /* CARD */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 16px;
+    transition: border-color 0.2s;
+  }
+  .card:hover { border-color: #2d4070; }
+
+  /* OVERVIEW TABLE */
+  .kpi-table { width: 100%; border-collapse: collapse; }
+  .kpi-table th {
+    background: rgba(59,130,246,0.1); color: var(--accent);
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 10px 14px; text-align: left; font-weight: 600;
+    border-bottom: 1px solid var(--border);
+  }
+  .kpi-table td {
+    padding: 12px 14px; font-size: 13px; color: var(--text2);
+    border-bottom: 1px solid rgba(30,45,80,0.5); vertical-align: top;
+  }
+  .kpi-table tr:last-child td { border-bottom: none; }
+  .kpi-table tr:hover td { background: rgba(59,130,246,0.03); color: var(--text); }
+  .kpi-cat { color: var(--text); font-weight: 600; font-size: 13px; }
+
+  /* QUIZ */
+  .quiz-progress-bar {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 999px; height: 6px; margin-bottom: 32px; overflow: hidden;
+  }
+  .quiz-progress-fill {
+    height: 100%; border-radius: 999px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    transition: width 0.4s ease;
+  }
+
+  .quiz-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px;
+    margin-bottom: 20px;
+    transition: all 0.3s;
+    position: relative;
+  }
+  .quiz-card.revealed { border-color: rgba(16,185,129,0.3); }
+  .quiz-card.revealed.wrong { border-color: rgba(239,68,68,0.3); }
+
+  .quiz-num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; border-radius: 999px;
+    background: rgba(59,130,246,0.15); color: var(--accent);
+    font-size: 12px; font-weight: 700; margin-bottom: 14px;
+  }
+
+  .quiz-q {
+    font-size: 15px; font-weight: 600; color: var(--text);
+    margin-bottom: 16px; line-height: 1.5;
+  }
+
+  .quiz-textarea {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); color: var(--text);
+    font-family: inherit; font-size: 14px; padding: 12px 14px;
+    resize: vertical; min-height: 80px; transition: border-color 0.2s;
+    outline: none;
+  }
+  .quiz-textarea:focus { border-color: var(--accent); }
+  .quiz-textarea:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  .quiz-actions { display: flex; gap: 10px; margin-top: 14px; }
+
+  .btn {
+    padding: 9px 20px; border-radius: var(--radius-sm);
+    font-family: inherit; font-size: 13px; font-weight: 600;
+    cursor: pointer; border: none; transition: all 0.2s;
+  }
+  .btn-reveal {
+    background: rgba(59,130,246,0.15); color: var(--accent);
+    border: 1px solid rgba(59,130,246,0.3);
+  }
+  .btn-reveal:hover { background: rgba(59,130,246,0.25); }
+  .btn-correct {
+    background: rgba(16,185,129,0.12); color: var(--green);
+    border: 1px solid rgba(16,185,129,0.3);
+  }
+  .btn-correct:hover { background: rgba(16,185,129,0.22); }
+  .btn-wrong {
+    background: rgba(239,68,68,0.12); color: var(--red);
+    border: 1px solid rgba(239,68,68,0.3);
+  }
+  .btn-wrong:hover { background: rgba(239,68,68,0.22); }
+
+  .quiz-answer {
+    display: none; margin-top: 16px; padding: 14px 16px;
+    background: rgba(16,185,129,0.06); border-left: 3px solid var(--green);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    font-size: 13px; color: var(--text2); line-height: 1.6;
+  }
+  .quiz-answer.visible { display: block; animation: fadeIn 0.3s ease; }
+  .quiz-answer strong { color: var(--green); }
+
+  .quiz-result-badge {
+    position: absolute; top: 16px; right: 16px;
+    font-size: 11px; font-weight: 700; padding: 4px 10px;
+    border-radius: 999px; display: none;
+  }
+  .quiz-result-badge.correct {
+    display: inline-flex; background: rgba(16,185,129,0.15); color: var(--green);
+  }
+  .quiz-result-badge.wrong {
+    display: inline-flex; background: rgba(239,68,68,0.15); color: var(--red);
+  }
+
+  /* SCOREBOARD */
+  .score-bar {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px 24px;
+    margin-bottom: 28px; display: flex; align-items: center; gap: 20px;
+  }
+  .score-num {
+    font-size: 42px; font-weight: 900; color: var(--accent);
+    font-variant-numeric: tabular-nums; line-height: 1;
+  }
+  .score-label { font-size: 13px; color: var(--text2); }
+  .score-label strong { color: var(--text); display: block; font-size: 16px; font-weight: 600; }
+
+  /* ESSAY */
+  .essay-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 24px; margin-bottom: 16px;
+    display: flex; gap: 16px;
+  }
+  .essay-num {
+    min-width: 36px; height: 36px; border-radius: var(--radius-sm);
+    background: linear-gradient(135deg, rgba(139,92,246,0.2), rgba(59,130,246,0.2));
+    color: var(--accent3); font-weight: 700; font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .essay-text { color: var(--text2); font-size: 14px; line-height: 1.7; }
+  .essay-text strong { color: var(--text); display: block; margin-bottom: 6px; font-size: 15px; }
+
+  /* GLOSSARY */
+  .glossary-search {
+    width: 100%; background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); color: var(--text);
+    font-family: inherit; font-size: 14px; padding: 13px 18px;
+    outline: none; margin-bottom: 20px; transition: border-color 0.2s;
+  }
+  .glossary-search:focus { border-color: var(--accent); }
+
+  .glossary-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  }
+  @media (max-width: 600px) { .glossary-grid { grid-template-columns: 1fr; } }
+
+  .gloss-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px 18px;
+    transition: all 0.2s;
+  }
+  .gloss-card:hover { border-color: var(--accent2); transform: translateY(-1px); }
+  .gloss-term {
+    font-size: 13px; font-weight: 700; color: var(--accent2);
+    font-family: 'JetBrains Mono', monospace; margin-bottom: 6px;
+  }
+  .gloss-def { font-size: 13px; color: var(--text2); line-height: 1.55; }
+  .gloss-hidden { display: none; }
+
+  /* DIFFERENCES TABLE */
+  .diff-table { width: 100%; border-collapse: collapse; }
+  .diff-table th {
+    background: var(--surface2); color: var(--accent); font-size: 12px;
+    text-transform: uppercase; letter-spacing: 0.06em; padding: 12px 16px;
+    text-align: left; border-bottom: 2px solid var(--border);
+  }
+  .diff-table td {
+    padding: 13px 16px; font-size: 13px; color: var(--text2);
+    border-bottom: 1px solid var(--border); vertical-align: top;
+  }
+  .diff-table tr:last-child td { border-bottom: none; }
+  .diff-table tr:hover td { background: rgba(59,130,246,0.03); }
+  .tag {
+    display: inline-block; padding: 2px 8px; border-radius: 999px;
+    font-size: 11px; font-weight: 600;
+  }
+  .tag-pro { background: rgba(139,92,246,0.15); color: #a78bfa; }
+  .tag-std { background: rgba(100,116,139,0.2); color: #94a3b8; }
+
+  /* SYSTEM INFO CARDS */
+  .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+  .info-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px;
+    transition: all 0.2s;
+  }
+  .info-card:hover { border-color: #2d4070; transform: translateY(-2px); }
+  .info-icon { font-size: 28px; margin-bottom: 12px; }
+  .info-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+  .info-desc { font-size: 13px; color: var(--text2); line-height: 1.6; }
+
+  /* COLLISION STEPS */
+  .steps-list { list-style: none; counter-reset: step; }
+  .steps-list li {
+    counter-increment: step;
+    display: flex; gap: 16px; margin-bottom: 16px;
+  }
+  .steps-list li::before {
+    content: counter(step);
+    min-width: 32px; height: 32px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: white; font-size: 13px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-top: 2px;
+  }
+  .step-content strong { color: var(--text); display: block; margin-bottom: 3px; }
+  .step-content { font-size: 14px; color: var(--text2); }
+
+  /* ALERT */
+  .alert {
+    padding: 14px 18px; border-radius: var(--radius-sm);
+    font-size: 13px; margin-bottom: 16px; display: flex; gap: 10px; align-items: flex-start;
+  }
+  .alert-warn { background: rgba(245,158,11,0.1); border-left: 3px solid var(--yellow); color: #fcd34d; }
+
+  /* BACK BUTTON */
+  .back-link {
+    display: inline-flex; align-items: center; gap: 8px;
+    color: var(--text2); text-decoration: none; font-size: 13px;
+    margin-bottom: 28px; transition: color 0.2s;
+  }
+  .back-link:hover { color: var(--accent); }
+
+  /* FOOTER */
+  footer {
+    text-align: center; padding: 40px 20px;
+    color: var(--text3); font-size: 12px;
+    border-top: 1px solid var(--border); margin-top: 20px;
+  }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-badge">⚙️ SimuLift Pro · Material de Estudio</div>
+  <h1>Guía de Estudio<br>Simulación Industrial</h1>
+  <p class="hero-sub">Planificación de Izajes y Montacargas · Sistemas de Simulación Profesional · Seguridad Operativa</p>
+  <div class="nav-tabs" id="nav-tabs">
+    <button class="nav-btn active" onclick="showSection('overview')">📊 Sistemas</button>
+    <button class="nav-btn" onclick="showSection('quiz')">🧠 Quiz Interactivo</button>
+    <button class="nav-btn" onclick="showSection('essay')">✍️ Ensayos</button>
+    <button class="nav-btn" onclick="showSection('glossary')">📖 Glosario</button>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ======================================================== -->
+  <!-- SECTION: OVERVIEW                                         -->
+  <!-- ======================================================== -->
+  <div class="section active" id="section-overview">
+
+    <div class="section-header">
+      <div class="section-title">Análisis de Sistemas de Simulación</div>
+      <div class="section-desc">Plataformas líderes, KPIs, diferencias de versiones y modelado de entorno</div>
+    </div>
+
+    <!-- KPI TABLE -->
+    <div class="card" style="overflow-x:auto;">
+      <div style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--text)">📈 Indicadores de Rendimiento (KPIs)</div>
+      <table class="kpi-table">
+        <thead>
+          <tr>
+            <th>Categoría</th>
+            <th>KPIs Específicos</th>
+            <th>Método de Cálculo</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="kpi-cat">🔒 Seguridad de Izaje</td>
+            <td>Radio vs. capacidad, límite de ángulo, presión de apoyo en suelo</td>
+            <td>Tablas de carga del fabricante + algoritmos de presión dinámica</td>
+          </tr>
+          <tr>
+            <td class="kpi-cat">⚖️ Dinámica de Carga</td>
+            <td>Boom deflection, detección de two-blocking</td>
+            <td>Física Newton-Euler + sensores virtuales en el modelo</td>
+          </tr>
+          <tr>
+            <td class="kpi-cat">🚜 Operación Montacargas</td>
+            <td>Precisión de centrado, velocidad avante/reversa, colisiones</td>
+            <td>Sensores de proximidad y telemetría de eventos</td>
+          </tr>
+          <tr>
+            <td class="kpi-cat">💀 Errores Críticos</td>
+            <td>Volcaduras, caída de carga, invasión zonas prohibidas</td>
+            <td>Monitoreo de límites estructurales y lógicos (Fatal Errors)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- DIFERENCIAS -->
+    <div class="card" style="overflow-x:auto;">
+      <div style="font-size:16px;font-weight:700;margin-bottom:16px;">⚡ Standard vs. Pro/Advanced</div>
+      <table class="diff-table">
+        <thead>
+          <tr>
+            <th>Aspecto</th>
+            <th><span class="tag tag-std">Standard / Lite</span></th>
+            <th><span class="tag tag-pro">Pro / Advanced</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Hardware</td>
+            <td>Emulador de control virtual portátil (ej. LiSIM Move)</td>
+            <td>Hasta 5 pantallas 360°, bases motrices, PLCs originales (HiL)</td>
+          </tr>
+          <tr>
+            <td>Software</td>
+            <td>Control básico, módulos limitados</td>
+            <td>Planificación de carga, simulación de viento, señaleros</td>
+          </tr>
+          <tr>
+            <td>Integración</td>
+            <td>Escenarios predefinidos</td>
+            <td>Exportación CAD, APIs para telemetría avanzada</td>
+          </tr>
+          <tr>
+            <td>Multiusuario</td>
+            <td>Individual</td>
+            <td>LIVE: instructor + múltiples estudiantes en tiempo real</td>
+          </tr>
+          <tr>
+            <td>Retroalimentación</td>
+            <td>Visual básica</td>
+            <td>VR alta resolución + ButtKicker (vibración háptica)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- PLATAFORMAS -->
+    <div class="section-header" style="margin-top:32px;">
+      <div class="section-title" style="font-size:20px;">🏭 Plataformas Líderes</div>
+    </div>
+    <div class="info-grid">
+      <div class="info-card">
+        <div class="info-icon">🦺</div>
+        <div class="info-title">Simlog</div>
+        <div class="info-desc">65 KPIs únicos para montacargas. Detecta 3 tipos de errores: Performance Indicators, Procedure Errors y Fatal Errors. Incluye ButtKicker para vibración táctil.</div>
+      </div>
+      <div class="info-card">
+        <div class="info-icon">🌐</div>
+        <div class="info-title">3D Lift Plan</div>
+        <div class="info-desc">SaaS de planificación de izajes. Integra Google Earth, drones y grúas patrocinadas (Link-Belt, Tadano, Grove) con tablas de carga oficiales gratuitas.</div>
+      </div>
+      <div class="info-card">
+        <div class="info-icon">🏗️</div>
+        <div class="info-title">CRANEbee</div>
+        <div class="info-desc">Más de 400 modelos de grúas. Calcula radio, capacidad y distribución de apoyos. Genera documentación técnica para licitaciones y detecta contornos perturbadores.</div>
+      </div>
+      <div class="info-card">
+        <div class="info-icon">🥽</div>
+        <div class="info-title">Virtual Forklift</div>
+        <div class="info-desc">NEXUS (individual, VR inmersivo) vs. LIVE (multiusuario, instructor global). Usa cajas verdes para puntos de descarga y flechas para trayectorias de entrenamiento.</div>
+      </div>
+      <div class="info-card">
+        <div class="info-icon">🔬</div>
+        <div class="info-title">Crane Planner 2.0</div>
+        <div class="info-desc">Herramienta Liebherr para planificación 3D. Ingesta fotogrametría de drones (JPG → malla OBJ) para precisión centimétrica de obstáculos en el sitio.</div>
+      </div>
+      <div class="info-card">
+        <div class="info-icon">⚙️</div>
+        <div class="info-title">LiSIM (Liebherr)</div>
+        <div class="info-desc">Arquitectura Hardware-in-the-Loop: el PLC original de la grúa real se integra al simulador, garantizando que mandos y límites sean idénticos a la máquina real.</div>
+      </div>
+    </div>
+
+    <!-- DETECCIÓN COLISIONES -->
+    <div class="card" style="margin-top:28px;">
+      <div style="font-size:16px;font-weight:700;margin-bottom:20px;">🛰️ Detección de Colisiones y Modelado de Entorno</div>
+      <ul class="steps-list">
+        <li>
+          <div class="step-content">
+            <strong>Fotogrametría con Drones</strong>
+            Cientos de fotografías aéreas (JPG) capturadas por drones se procesan en mallas 3D de alta precisión (formato OBJ). Permite detectar obstáculos exactos: bordillos, árboles, alcantarillas.
+          </div>
+        </li>
+        <li>
+          <div class="step-content">
+            <strong>Importación de Datos CAD y Google Earth</strong>
+            Archivos CAD de estructuras complejas e imágenes satelitales para superponer el plan de izaje sobre el sitio real. Identifica peligros actuales no disponibles en planos tradicionales.
+          </div>
+        </li>
+        <li>
+          <div class="step-content">
+            <strong>Algoritmos de Proximidad y Swing Path</strong>
+            Calculan el camino de giro de la pluma para alertar sobre interferencias aéreas. Líneas eléctricas requieren un mínimo de 5 metros de distancia de seguridad.
+          </div>
+        </li>
+      </ul>
+      <div class="alert alert-warn">
+        ⚠️ <span><strong>Regla crítica:</strong> Maniobrar solo hasta el <strong>80% de la capacidad nominal</strong> tanto de los accesorios de izaje como del equipo. Políticas Walmart México y estándares OSHA.</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- SECTION: QUIZ                                             -->
+  <!-- ======================================================== -->
+  <div class="section" id="section-quiz">
+
+    <div class="section-header">
+      <div class="section-title">🧠 Quiz Interactivo</div>
+      <div class="section-desc">Responde, luego revela la clave y márca si acertaste o no</div>
+    </div>
+
+    <!-- SCORE -->
+    <div class="score-bar">
+      <div>
+        <div class="score-num" id="score-num">0</div>
+        <div class="score-label">correctas de <strong id="score-total">0</strong> respondidas</div>
+      </div>
+      <div style="flex:1;">
+        <div class="quiz-progress-bar" style="margin-bottom:8px;">
+          <div class="quiz-progress-fill" id="score-fill" style="width:0%"></div>
+        </div>
+        <div style="font-size:12px;color:var(--text3);" id="score-pct">0% de efectividad</div>
+      </div>
+      <button class="btn btn-reveal" onclick="resetQuiz()" style="white-space:nowrap">↺ Reiniciar</button>
+    </div>
+
+    <!-- PROGRESS BAR -->
+    <div class="quiz-progress-bar">
+      <div class="quiz-progress-fill" id="quiz-progress" style="width:0%"></div>
+    </div>
+
+    <div id="quiz-container"></div>
+
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- SECTION: ESSAY                                            -->
+  <!-- ======================================================== -->
+  <div class="section" id="section-essay">
+    <div class="section-header">
+      <div class="section-title">✍️ Temas de Ensayo</div>
+      <div class="section-desc">Preguntas de análisis profundo y discusión académica</div>
+    </div>
+    <div id="essay-container"></div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- SECTION: GLOSSARY                                         -->
+  <!-- ======================================================== -->
+  <div class="section" id="section-glossary">
+    <div class="section-header">
+      <div class="section-title">📖 Glosario de Términos</div>
+      <div class="section-desc">Terminología clave del sector de izajes y simulación industrial</div>
+    </div>
+    <input class="glossary-search" id="gloss-search" placeholder="🔍 Buscar término..." oninput="filterGlossary(this.value)">
+    <div class="glossary-grid" id="glossary-grid"></div>
+  </div>
+
+</div>
+
+<footer>
+  ⚙️ SimuLift Pro — Guía de Estudio Técnica · Expander MICSA<br>
+  <span style="opacity:0.5">Material educativo interno · 2026</span>
+</footer>
+
+<script>
+// ─── DATA ────────────────────────────────────────────────────────────────────
+
+var QUIZ = [
+  {
+    q: "¿Cuál es la diferencia fundamental entre los sistemas Virtual Forklift NEXUS y Virtual Forklift LIVE?",
+    a: "NEXUS es un simulador individual de alta calidad con entornos muy realistas y módulos específicos de entrenamiento de habilidades. LIVE es un sistema multiusuario que permite la interacción en tiempo real entre un instructor y múltiples estudiantes a nivel global."
+  },
+  {
+    q: "Según los estándares de seguridad de Walmart México, ¿cuál es el límite de capacidad de carga permitido para accesorios y equipos durante una maniobra?",
+    a: "Es obligatorio maniobrar utilizando como máximo el 80% de la capacidad nominal tanto de los accesorios de izaje como del equipo mismo, garantizando un margen de seguridad crítico para prevenir colapsos o fallas estructurales."
+  },
+  {
+    q: "¿Qué funciones cumple el software CRANEbee en la planificación de proyectos de izaje?",
+    a: "CRANEbee permite la simulación de maniobras en entornos 3D con más de 400 modelos de grúas. Realiza cálculos precisos de radio, capacidad y distribución de apoyos, detecta 'contornos perturbadores' (obstáculos) y genera documentación técnica para licitaciones y ejecución."
+  },
+  {
+    q: "¿Qué son los KPIs en el contexto de los simuladores de Simlog?",
+    a: "Son métricas diagnósticas (65 indicadores únicos para montacargas) que miden rapidez y cuidado en el trabajo simulado. Incluyen tiempo de ejecución, velocidades promedio, precisión al recoger/colocar cargas y conteo de colisiones con estantes u obstáculos."
+  },
+  {
+    q: "¿Qué ventajas ofrece la integración de datos de drones y Google Earth en el software 3D Lift Plan?",
+    a: "Permite crear modelos precisos del sitio de trabajo real, superponiendo el plan de izaje sobre imágenes satelitales o fotografías aéreas. Ayuda a identificar peligros potenciales como líneas eléctricas o edificios cercanos que no aparecerían en dibujos CAD tradicionales."
+  },
+  {
+    q: "Describa el propósito del sistema de vibración 'ButtKicker' en los simuladores de Simlog.",
+    a: "El ButtKicker es un transductor de sonido de baja frecuencia que añade retroalimentación táctil al simulador. Convierte los sonidos del software (ralentí del motor o colisiones) en vibraciones físicas en el asiento del operador, aumentando el realismo y la inmersión del entrenamiento."
+  },
+  {
+    q: "¿Qué es el 'Load Moment Indicator' (Indicador de Momento de Carga) en el simulador de grúa móvil?",
+    a: "Es un instrumento crítico del tablero de la grúa que monitorea la estabilidad del equipo. Muestra el ángulo de la pluma, el radio de carga y la capacidad utilizada, alertando cuando la configuración de la maniobra se acerca a los límites seguros de la máquina."
+  },
+  {
+    q: "¿Cómo se guía visualmente al estudiante durante los módulos de entrenamiento en Virtual Forklift NEXUS?",
+    a: "El sistema utiliza un código de colores y señales visuales: cajas verdes indican los puntos exactos donde se debe depositar la carga, y flechas en el suelo marcan la ruta de viaje que el operador debe seguir para completar la tarea de forma segura."
+  },
+  {
+    q: "¿Qué importancia tienen las grúas 'patrocinadas' dentro de la plataforma 3D Lift Plan?",
+    a: "Los fabricantes patrocinadores (Link-Belt, Tadano, Grove) proporcionan datos técnicos y tablas de carga de forma gratuita dentro del software. Esto asegura que los planificadores utilicen especificaciones oficiales y actualizadas directamente del fabricante sin costo adicional."
+  },
+  {
+    q: "¿Cuáles son los tres tipos de errores que detecta el simulador de montacargas de Simlog?",
+    a: "Detecta: (1) Performance Indicators — errores de eficiencia; (2) Procedure Errors — acciones incorrectas como conducir fuera de límites; y (3) Fatal Errors — situaciones críticas como vuelcos o caída de carga que detienen la simulación inmediatamente."
+  },
+  {
+    q: "¿Cómo utiliza Crane Planner 2.0 la fotogrametría de drones para mejorar la precisión de la simulación?",
+    a: "Usa drones para capturar cientos de fotografías aéreas (JPG) que se procesan para generar mallas tridimensionales en formato OBJ. Esto permite visualizar obstáculos reales del sitio con precisión centimétrica antes de ejecutar la maniobra."
+  },
+  {
+    q: "¿En qué consiste la arquitectura Hardware-in-the-Loop (HiL) de los simuladores LiSIM de Liebherr?",
+    a: "Es una arquitectura que integra el PLC (controlador lógico) original de la grúa física en el simulador. Esto garantiza que el comportamiento de los mandos, los sistemas de accionamiento y los límites operativos sean idénticos a los de la máquina real."
+  },
+  // ─── GUÍA 3 ───
+  {
+    q: "¿Qué es CRANEbee y cuál es su función principal en la industria de la construcción?",
+    a: "CRANEbee es una solución de software de simulación y planificación de izajes de Cranimax. Su función principal es permitir el modelado virtual de operaciones de elevación antes de la ejecución real, evaluando factores como capacidad del equipo, radio de giro, condiciones del sitio y distribución de la carga para garantizar seguridad y eficiencia."
+  },
+  {
+    q: "¿Cuál es la diferencia entre los datos mostrados en Crane Planner 2.0 de Liebherr y los datos en directo de las grúas reales?",
+    a: "No existe diferencia técnica significativa. Crane Planner 2.0 utiliza exactamente la misma lógica de cálculo que los sistemas de limitación de par de carga (LMB/LICCON) de las grúas Liebherr en vivo, asegurando que los datos de planificación sean vinculantes y precisos respecto al comportamiento real de la máquina."
+  },
+  {
+    q: "Explique por qué el sistema de dirección trasera de un montacargas es una característica crítica para su operación.",
+    a: "La dirección en las ruedas traseras aumenta la maniobrabilidad en espacios reducidos como almacenes. Sin embargo, difiere de la conducción tradicional porque no posee acción de 'caster', lo que significa que el operador debe aplicar fuerza constante para mantener el giro."
+  },
+  {
+    q: "¿Cómo contribuye la integración de archivos BIM (.ifc) y CAD (.dwg) a la precisión de la planificación de izajes?",
+    a: "La importación de estos archivos permite reproducir con exactitud el entorno real de la obra y los objetos involucrados. Eleva la personalización de los planos de izaje y permite detectar colisiones potenciales entre la grúa, la carga y las estructuras existentes en el modelo tridimensional."
+  },
+  {
+    q: "Describa el riesgo operativo que surge al realizar un giro a alta velocidad con un montacargas que lleva una carga elevada.",
+    a: "El riesgo es un accidente por vuelco desastroso. Las fuerzas centrífugas y gravitacionales se combinan sobre una unidad (montacargas y carga) cuyo centro de gravedad varía continuamente con el movimiento de la carga, comprometiendo la estabilidad."
+  },
+  {
+    q: "¿Cuáles son los beneficios de utilizar una configuración de pantallas múltiples en la simulación de montacargas según Simlog?",
+    a: "Permiten crear un campo de visión de 180 grados, facilitando la enseñanza de técnicas críticas como voltear la cabeza para mirar hacia atrás mientras se conduce en reversa, emulando la visibilidad real que tendría un operador en una cabina física."
+  },
+  {
+    q: "¿Qué papel juegan los sistemas de cálculo de presión sobre el suelo en la seguridad de las operaciones de grúas móviles?",
+    a: "Permiten prever si el terreno podrá soportar las fuerzas de apoyo y cargas de la grúa durante la operación. El software actualiza estos indicadores automáticamente cada vez que cambia la configuración o geometría de la máquina, previniendo hundimientos o inestabilidad."
+  },
+  {
+    q: "Según la información de Transmat, ¿qué ventajas ofrece la generación de secuencias de izaje en 2D y 3D?",
+    a: "Proporcionan una visión completa del proceso paso a paso, permitiendo anticipar desafíos operativos, optimizar costos, reducir tiempos de ejecución y facilitar la gestión documental del proyecto a través de informes precisos."
+  },
+];
+
+var ESSAYS = [
+  {
+    title: "ROI y Seguridad Industrial",
+    text: "Analice cómo el uso de simuladores profesionales reduce los costos operativos y previene accidentes fatales en comparación con el entrenamiento tradicional en equipos reales."
+  },
+  {
+    title: "Evolución Tecnológica en Planificación de Izajes",
+    text: "Discuta cómo la transición de dibujos hechos a mano hacia integraciones de CAD, drones y modelos 3D ha cambiado la responsabilidad del ingeniero de maniobras."
+  },
+  {
+    title: "Entrenamiento Modular vs. Estándar",
+    text: "Evalúe las ventajas de adquirir sistemas de simulación con estructura modular (como NEXUS) que permiten a las empresas pagar solo por las habilidades específicas que necesitan desarrollar."
+  },
+  {
+    title: "Retroalimentación Multisensorial en el Aprendizaje",
+    text: "Explore cómo la realidad virtual de alta resolución, el audio direccional y la vibración táctil (ButtKicker) afectan la retención de conocimientos y la preparación psicológica del operador."
+  },
+  {
+    title: "Normativa OSHA y Cumplimiento Digital",
+    text: "Explique cómo plataformas como Virtual Forklift LIVE o los reportes de Simlog ayudan a las organizaciones a satisfacer los requisitos de formación formal y evaluación práctica exigidos por OSHA y organismos internacionales."
+  },
+  {
+    title: "CAD e Integración Google Earth en CRANEbee",
+    text: "Analice cómo la integración de datos CAD y Google Earth en simuladores de planificación como CRANEbee transforma la gestión de riesgos en proyectos de izaje de alta complejidad."
+  },
+  {
+    title: "Simulación Local vs. SaaS",
+    text: "Compare las arquitecturas de simulación local (Simlog) frente a las arquitecturas basadas en la nube o SaaS (3D Lift Plan), destacando ventajas en accesibilidad y potencia de cálculo."
+  },
+  // ─── GUÍA 3 ───
+  {
+    title: "Impacto de la Simulación Digital en la Seguridad Industrial",
+    text: "Analice cómo el uso de herramientas como CRANEbee y Crane Planner 2.0 mitiga los riesgos de accidentes en proyectos de alta complejidad."
+  },
+  {
+    title: "Simuladores de Entretenimiento vs. Capacitación Profesional",
+    text: "Compare las características de los juegos móviles de simulación frente a estaciones de trabajo profesionales como las de Simlog, enfocándose en la fidelidad física y los indicadores de rendimiento."
+  },
+  {
+    title: "La Importancia de los Datos LMB/LICCON",
+    text: "Discuta por qué el uso de datos originales de los fabricantes es esencial para la validez de una simulación de ingeniería y la seguridad operativa."
+  },
+  {
+    title: "Evolución en la Capacitación de Operadores de Montacargas",
+    text: "Examine cómo la integración de controles réplica y sistemas de vibración transforma el aprendizaje de habilidades críticas en la logística moderna."
+  },
+  {
+    title: "Optimización de Recursos mediante la Planificación Virtual",
+    text: "Evalúe cómo la simulación previa a la ejecución impacta en el retorno de inversión y la reducción de costos operativos en sectores como la minería y la energía."
+  },
+];
+
+var GLOSSARY = [
+  { t: "3D Lift Plan", d: "Software SaaS de planificación de izajes que permite simular maniobras, seleccionar grúas y calcular presiones de apoyo con imágenes satelitales." },
+  { t: "Aparejos (Rigging)", d: "Conjunto de elementos (eslingas, grilletes, ganchos) utilizados para sujetar una carga a un equipo de izaje." },
+  { t: "Boom Deflection", d: "Fenómeno físico donde la pluma de una grúa se dobla ligeramente bajo el peso de una carga; los simuladores avanzados replican este efecto." },
+  { t: "ButtKicker", d: "Transductor de sonido de baja frecuencia que proporciona vibración física al asiento del operador para simular el ralentí del motor o colisiones." },
+  { t: "CAD", d: "Diseño Asistido por Computadora. Formato de archivo digital para importar planos detallados de estructuras o instalaciones al entorno de simulación." },
+  { t: "Centro de Gravedad (CG)", d: "Punto teórico donde se concentra todo el peso de una carga o equipo. Su monitoreo es vital para la estabilidad de la maniobra." },
+  { t: "Contorno Perturbador", d: "Cualquier estructura física (postes, techos, edificios) que pueda interferir con el radio de giro o el movimiento de la pluma de una grúa." },
+  { t: "CRANEbee", d: "Software de planificación de izajes con más de 400 modelos de grúas, cálculos de viabilidad y generación de documentación técnica para licitaciones." },
+  { t: "Crane Planner 2.0", d: "Herramienta de Liebherr para planificación de izajes en 3D que permite importar entornos reales mediante fotogrametría de drones." },
+  { t: "Eslingas", d: "Cintas de material sintético o cables de acero para envolver y elevar cargas. Deben inspeccionarse antes de cada uso." },
+  { t: "Ground Bearing Pressure", d: "Fuerza que ejercen los apoyos (estabilizadores/orugas) de una grúa sobre el suelo. Un cálculo incorrecto puede provocar el hundimiento del equipo." },
+  { t: "Hardware-in-the-Loop (HiL)", d: "Técnica de simulación donde una pieza de hardware real (como un PLC) se conecta a un sistema virtual para validar su comportamiento real." },
+  { t: "Izaje Tándem", d: "Operación compleja que involucra el uso coordinado de dos o más grúas para elevar una sola carga de forma sincronizada." },
+  { t: "KPI", d: "Key Performance Indicator. Métrica cuantificable para evaluar la eficiencia, precisión y seguridad del operador durante la simulación." },
+  { t: "Load Moment Indicator", d: "Instrumento del tablero de la grúa que monitorea ángulo de pluma, radio de carga y capacidad utilizada, alertando sobre límites seguros." },
+  { t: "OBJ (Formato)", d: "Formato 3D para importar mallas tridimensionales del entorno real obtenidas por drones, permitiendo que el simulador interactúe con la geometría del sitio." },
+  { t: "PLC", d: "Programmable Logic Controller. Cerebro electrónico de la grúa que controla sus funciones y límites de seguridad operativos." },
+  { t: "Pluma (Boom)", d: "El brazo principal de una grúa que se extiende para alcanzar la altura o el radio necesario para la maniobra." },
+  { t: "SaaS", d: "Software as a Service. Modelo de distribución de software donde la aplicación se aloja en la nube y se accede vía navegador web con suscripción." },
+  { t: "Simlog", d: "Sistema de simulación con 65 KPIs para montacargas. Clasifica errores en Performance Indicators, Procedure Errors y Fatal Errors." },
+  { t: "Two-Blocking", d: "Condición peligrosa donde el bloque del gancho entra en contacto físico con la punta de la pluma, pudiendo romper el cable y soltar la carga." },
+  { t: "Virtual Forklift", d: "Plataforma con versión NEXUS (individual, alta inmersión VR) y LIVE (multiusuario con instructor global en tiempo real)." },
+  { t: "VR (Realidad Virtual)", d: "Tecnología que utiliza visores (HTC Focus, Oculus Meta) para sumergir al usuario en un entorno de entrenamiento simulado en 360 grados." },
+  // ─── GUÍA 3 ───
+  { t: "BIM (Building Information Modeling)", d: "Proceso de generación y gestión de datos de una estructura durante su ciclo de vida, utilizando software de modelado en tres dimensiones y tiempo real."},
+  { t: "Centro de Gravedad", d: "Punto hipotético donde se concentra todo el peso de un objeto (como un montacargas y su carga). Su posición varía según el movimiento de la carga, afectando la estabilidad."},
+  { t: "Controles Réplica", d: "Dispositivos de hardware fabricados con componentes industriales que imitan fielmente las palancas y volantes de las máquinas reales para fines de entrenamiento."},
+  { t: "Fuerza Centrífuga", d: "Fuerza que tiende a alejar a un objeto del centro de rotación durante un giro. Crítica en la estabilidad de montacargas a alta velocidad con carga elevada."},
+  { t: "Izaje", d: "Operación mecánica de elevación y movimiento de cargas pesadas mediante el uso de grúas u otros equipos de elevación."},
+  { t: "LMB / LICCON", d: "Sistemas específicos de limitación del par de carga de Liebherr. Calculan la capacidad y seguridad de la grúa en tiempo real; Crane Planner 2.0 usa la misma lógica."},
+  { t: "Mástil", d: "Estructura vertical de un montacargas que sostiene las horquillas y permite la elevación de las cargas."},
+  { t: "Montacargas de Contrapeso", d: "Vehículo industrial equipado con una carga pesada en la parte trasera para equilibrar el peso levantado por las horquillas delanteras."},
+  { t: "Planificación de Izajes", d: "Proceso sistemático de modelado y evaluación de maniobras de elevación para garantizar la viabilidad técnica y la seguridad operativa."},
+  { t: "Radio de Giro", d: "Distancia medida desde el centro de rotación de una grúa o vehículo hasta el punto más alejado de su movimiento."},
+  { t: "Simulador de Movimiento", d: "Sistema que utiliza actuadores para mover físicamente la cabina de un simulador, diferenciándose de los sistemas de vibración táctil como el ButtKicker."},
+  { t: "Transmat", d: "Proveedor de tecnología de simulación para izajes que ofrece generación de secuencias en 2D y 3D para planificación y documentación de proyectos."},
+];
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+var quizState = {}; // { index: { answered, correct, revealed } }
+var scoreCorrect = 0;
+var scoreTotal = 0;
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+function init() {
+  buildQuiz();
+  buildEssays();
+  buildGlossary();
+}
+
+// ─── NAVIGATION ──────────────────────────────────────────────────────────────
+function showSection(id) {
+  document.querySelectorAll('.section').forEach(function(s){ s.classList.remove('active'); });
+  document.getElementById('section-' + id).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(function(b){ b.classList.remove('active'); });
+  event.target.classList.add('active');
+}
+
+// ─── QUIZ ────────────────────────────────────────────────────────────────────
+function buildQuiz() {
+  var container = document.getElementById('quiz-container');
+  container.innerHTML = '';
+  QUIZ.forEach(function(item, i) {
+    quizState[i] = { answered: false, correct: false, revealed: false };
+    var card = document.createElement('div');
+    card.className = 'quiz-card';
+    card.id = 'qcard-' + i;
+    card.innerHTML = [
+      '<span class="quiz-result-badge" id="qbadge-' + i + '"></span>',
+      '<div class="quiz-num">' + (i + 1) + '</div>',
+      '<div class="quiz-q">' + item.q + '</div>',
+      '<textarea class="quiz-textarea" id="qtxt-' + i + '" placeholder="Escribe tu respuesta aquí..."></textarea>',
+      '<div class="quiz-actions">',
+        '<button class="btn btn-reveal" onclick="revealAnswer(' + i + ')">🔍 Revelar Respuesta</button>',
+        '<button class="btn btn-correct" id="qbtn-ok-' + i + '" onclick="markAnswer(' + i + ', true)" style="display:none">✓ Correcto</button>',
+        '<button class="btn btn-wrong" id="qbtn-no-' + i + '" onclick="markAnswer(' + i + ', false)" style="display:none">✗ Incorrecto</button>',
+      '</div>',
+      '<div class="quiz-answer" id="qans-' + i + '">',
+        '<strong>✅ Respuesta clave:</strong><br>' + item.a,
+      '</div>',
+    ].join('');
+    container.appendChild(card);
+  });
+  updateQuizProgress();
+}
+
+function revealAnswer(i) {
+  if (quizState[i].revealed) return;
+  quizState[i].revealed = true;
+  document.getElementById('qans-' + i).classList.add('visible');
+  document.getElementById('qbtn-ok-' + i).style.display = 'inline-flex';
+  document.getElementById('qbtn-no-' + i).style.display = 'inline-flex';
+  updateQuizProgress();
+}
+
+function markAnswer(i, correct) {
+  if (quizState[i].answered) {
+    // toggle
+    if (quizState[i].correct === correct) return;
+    if (quizState[i].correct) scoreCorrect--;
+    else scoreCorrect++;
+    quizState[i].correct = correct;
+  } else {
+    quizState[i].answered = true;
+    quizState[i].correct = correct;
+    scoreTotal++;
+    if (correct) scoreCorrect++;
+  }
+
+  var card = document.getElementById('qcard-' + i);
+  var badge = document.getElementById('qbadge-' + i);
+  var txt = document.getElementById('qtxt-' + i);
+  txt.disabled = true;
+
+  if (correct) {
+    card.classList.add('revealed');
+    card.classList.remove('wrong');
+    badge.className = 'quiz-result-badge correct';
+    badge.textContent = '✓ Correcto';
+  } else {
+    card.classList.add('revealed', 'wrong');
+    badge.className = 'quiz-result-badge wrong';
+    badge.textContent = '✗ Incorrecto';
+  }
+  updateScore();
+  updateQuizProgress();
+}
+
+function updateScore() {
+  document.getElementById('score-num').textContent = scoreCorrect;
+  document.getElementById('score-total').textContent = scoreTotal;
+  var pct = scoreTotal > 0 ? Math.round((scoreCorrect / scoreTotal) * 100) : 0;
+  document.getElementById('score-fill').style.width = pct + '%';
+  document.getElementById('score-pct').textContent = pct + '% de efectividad';
+}
+
+function updateQuizProgress() {
+  var revealed = Object.values(quizState).filter(function(s){ return s.revealed; }).length;
+  document.getElementById('quiz-progress').style.width = (revealed / QUIZ.length * 100) + '%';
+}
+
+function resetQuiz() {
+  scoreCorrect = 0;
+  scoreTotal = 0;
+  updateScore();
+  buildQuiz();
+}
+
+// ─── ESSAYS ──────────────────────────────────────────────────────────────────
+function buildEssays() {
+  var container = document.getElementById('essay-container');
+  ESSAYS.forEach(function(e, i) {
+    var div = document.createElement('div');
+    div.className = 'essay-card';
+    div.innerHTML = [
+      '<div class="essay-num">' + (i + 1) + '</div>',
+      '<div class="essay-text"><strong>' + e.title + '</strong>' + e.text + '</div>',
+    ].join('');
+    container.appendChild(div);
+  });
+}
+
+// ─── GLOSSARY ────────────────────────────────────────────────────────────────
+function buildGlossary() {
+  var grid = document.getElementById('glossary-grid');
+  GLOSSARY.forEach(function(g) {
+    var card = document.createElement('div');
+    card.className = 'gloss-card';
+    card.innerHTML = '<div class="gloss-term">' + g.t + '</div><div class="gloss-def">' + g.d + '</div>';
+    grid.appendChild(card);
+  });
+}
+
+function filterGlossary(val) {
+  var v = val.toLowerCase();
+  document.querySelectorAll('.gloss-card').forEach(function(c) {
+    var term = c.querySelector('.gloss-term').textContent.toLowerCase();
+    var def  = c.querySelector('.gloss-def').textContent.toLowerCase();
+    c.style.display = (term.includes(v) || def.includes(v)) ? '' : 'none';
+  });
+}
+
+// ─── START ───────────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <meta name="theme-color" content="#0a0f1e" />
+    <title>SimuLift Pro — Expander MICSA</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div id="loading">
+      <div class="loading-logo">⚙️ SimuLift Pro</div>
+      <div class="loading-spinner"></div>
+      <div class="loading-text">Cargando maniobra Expander MICSA...</div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <!-- HEADER -->
+    <header id="header">
+      <div class="logo">
+        <span>⚙️</span>
+        <div>
+          <div class="logo-name">SimuLift Pro</div>
+          <div class="logo-sub">Abatimiento Controlado — Expander MICSA</div>
+        </div>
+      </div>
+      <div class="header-badges">
+        <div class="badge" id="status-badge">🔧 PREP</div>
+        <div class="badge warn">17,557 kg</div>
+      </div>
+    </header>
+
+    <!-- LEFT PANEL: Phases + Controls + Camera -->
+    <div id="left-panel">
+      <div class="panel-card">
+        <div class="panel-title">Fases de Maniobra</div>
+        <div class="phase-list" id="phase-list"></div>
+      </div>
+      <div class="panel-card">
+        <div class="panel-title">Controles</div>
+        <div class="controls-row">
+          <button class="btn btn-primary" id="btn-play">▶ Iniciar</button>
+          <button class="btn btn-secondary" id="btn-pause">⏸</button>
+        </div>
+        <div class="controls-row controls-row-mt">
+          <button class="btn btn-secondary" id="btn-prev">← Ant</button>
+          <button class="btn btn-secondary" id="btn-next">Sig →</button>
+        </div>
+        <div class="controls-row controls-row-mt">
+          <button class="btn btn-danger" id="btn-reset">↺ Reiniciar</button>
+        </div>
+        <div class="tooltip-hint">Arrastra para rotar • Pellizca para zoom</div>
+      </div>
+      <div class="panel-card">
+        <div class="panel-title">Vista de Cámara</div>
+        <div class="cam-row" id="cam-row"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL: Monitoring -->
+    <div id="right-panel">
+      <div class="panel-card">
+        <div class="panel-title">Grúa Liebherr LTM 1050</div>
+        <div class="stat-row">
+          <span class="stat-label">Ángulo Expander</span
+          ><span class="stat-value" id="s-angle">0°</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Carga Liebherr</span
+          ><span class="stat-value warn" id="s-titan-load">—</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Util. Liebherr</span
+          ><span class="stat-value" id="s-titan-util">—</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Radio / Capacidad</span
+          ><span class="stat-value">4.0 m / 18,144 kg</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Tensión Eslinga</span
+          ><span class="stat-value accent2" id="s-forks">—</span>
+        </div>
+      </div>
+      <div class="panel-card">
+        <div class="panel-title">Montacargas + Boom (Tailing)</div>
+        <div class="stat-row">
+          <span class="stat-label">Reacción Pivote</span
+          ><span class="stat-value" id="s-versa-load">—</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Util. Boom (ctrl)</span
+          ><span class="stat-value" id="s-versa-util">—</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Reparto Liebherr/MC</span
+          ><span class="stat-value accent2" id="s-split">—</span>
+        </div>
+        <div class="stat-note">
+          ⚙️ Montacargas controla pivote, no comparte carga
+        </div>
+      </div>
+      <div class="panel-card">
+        <div class="panel-title">Seguridad</div>
+        <div class="stat-row">
+          <span class="stat-label">Util. Liebherr</span
+          ><span class="stat-value" id="s-sf">—</span>
+        </div>
+        <div class="safety-bar">
+          <div class="safety-fill" id="safety-fill"></div>
+        </div>
+        <div class="stat-row mt8">
+          <span class="stat-label">Clearance Hook/Techo</span
+          ><span class="stat-value" id="s-interf">Normal</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Zona Exclusión</span
+          ><span class="stat-value accent2" id="s-zone">Normal</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">CG Expander</span
+          ><span class="stat-value" id="s-cg">3.80 m</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- BOTTOM INFO BAR -->
+    <div id="bottom-bar">
+      <div class="step-info">
+        <div class="step-title" id="step-title">🔧 Toolbox Talk</div>
+        <div class="step-desc" id="step-desc">Inicializando simulación...</div>
+      </div>
+      <div class="progress-track" id="progress-track"></div>
+    </div>
+
+    <!-- MOBILE BOTTOM TABS -->
+    <nav id="bottom-tabs">
+      <button class="tab-btn active" id="tab-3d" onclick="showTab('3d')">
+        <span class="tab-icon">🎬</span>
+        <span>Vista 3D</span>
+      </button>
+      <button class="tab-btn" id="tab-fases" onclick="showTab('fases')">
+        <span class="tab-icon">📋</span>
+        <span>Fases</span>
+      </button>
+      <!-- Center play/pause button -->
+      <button
+        class="tab-btn tab-play"
+        id="tab-play-btn"
+        onclick="mobilePlayPause()"
+      >
+        <div class="tab-play-inner" id="tab-play-inner">▶</div>
+      </button>
+      <button class="tab-btn" id="tab-monitor" onclick="showTab('monitor')">
+        <span class="tab-icon">📊</span>
+        <span>Monitor</span>
+      </button>
+      <button class="tab-btn" id="tab-cam" onclick="showTab('cam')">
+        <span class="tab-icon">🎥</span>
+        <span>Cámara</span>
+      </button>
+    </nav>
+
+    <!-- ALERT -->
+    <div id="alert-box">
+      <span>⚠️</span
+      ><span id="alert-text">CARGA SUSPENDIDA — Zona de exclusión activa</span>
+    </div>
+
+    <!-- SWIPE HINT (shows once on mobile) -->
+    <div id="swipe-hint">👆 Toca las pestañas para navegar</div>
+
+    <!-- Three.js via CDN -->
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.163.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.163.0/examples/jsm/"
+        }
+      }
+    </script>
+
+    <!-- MOBILE NAV LOGIC -->
+    <script>
+      var _activeTab = "3d";
+      var _isPlaying = false;
+
+      function showTab(tab) {
+        _activeTab = tab;
+
+        document
+          .querySelectorAll(".tab-btn:not(.tab-play)")
+          .forEach(function (b) {
+            b.classList.remove("active");
+          });
+
+        var leftPanel = document.getElementById("left-panel");
+        var rightPanel = document.getElementById("right-panel");
+
+        leftPanel.classList.remove("open");
+        rightPanel.classList.remove("open");
+
+        if (tab === "3d") {
+          document.getElementById("tab-3d").classList.add("active");
+        } else if (tab === "fases") {
+          document.getElementById("tab-fases").classList.add("active");
+          leftPanel.classList.add("open");
+        } else if (tab === "monitor") {
+          document.getElementById("tab-monitor").classList.add("active");
+          rightPanel.classList.add("open");
+        } else if (tab === "cam") {
+          document.getElementById("tab-cam").classList.add("active");
+          leftPanel.classList.add("open");
+        }
+      }
+
+      function mobilePlayPause() {
+        var playBtn = document.getElementById("btn-play");
+        var pauseBtn = document.getElementById("btn-pause");
+        var tabInner = document.getElementById("tab-play-inner");
+        var tabBtnEl = document.getElementById("tab-play-btn");
+
+        if (!_isPlaying) {
+          playBtn.click();
+          _isPlaying = true;
+          tabInner.textContent = "⏸";
+          tabBtnEl.classList.add("playing");
+          showTab("3d");
+        } else {
+          pauseBtn.click();
+          _isPlaying = false;
+          tabInner.textContent = "▶";
+          tabBtnEl.classList.remove("playing");
+        }
+      }
+
+      document.addEventListener("simulationComplete", function () {
+        _isPlaying = false;
+        document.getElementById("tab-play-inner").textContent = "▶";
+        document.getElementById("tab-play-btn").classList.remove("playing");
+      });
+
+      (function () {
+        var tabs = ["fases", "3d", "monitor", "cam"];
+        var startX = 0;
+        var startY = 0;
+
+        document.getElementById("canvas").addEventListener(
+          "touchstart",
+          function (e) {
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+          },
+          { passive: true },
+        );
+
+        document.getElementById("canvas").addEventListener(
+          "touchend",
+          function (e) {
+            var dx = e.changedTouches[0].clientX - startX;
+            var dy = e.changedTouches[0].clientY - startY;
+            if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+              var idx = tabs.indexOf(_activeTab);
+              if (dx < 0 && idx < tabs.length - 1) showTab(tabs[idx + 1]);
+              else if (dx > 0 && idx > 0) showTab(tabs[idx - 1]);
+            }
+          },
+          { passive: true },
+        );
+      })();
+
+      setTimeout(function () {
+        var h = document.getElementById("swipe-hint");
+        if (h) h.remove();
+      }, 4000);
+
+      window.addEventListener("resize", function () {
+        if (window.innerWidth >= 768) {
+          document.getElementById("left-panel").classList.remove("open");
+          document.getElementById("right-panel").classList.remove("open");
+        }
+      });
+    </script>
+
+    <script type="module" src="sim.js"></script>
+    <script>
+      window.addEventListener("error", function (e) {
+        var loading = document.getElementById("loading");
+        if (loading) {
+          loading.innerHTML =
+            '<div style="color:#ff4444;font-family:monospace;padding:20px;max-width:80vw;text-align:left">' +
+            '<div style="font-size:22px;margin-bottom:12px">⚠️ Error de carga</div>' +
+            '<div style="font-size:13px;opacity:0.8;margin-bottom:8px">Revisa la consola (F12)</div>' +
+            '<div style="font-size:11px;background:rgba(0,0,0,0.4);padding:10px;border-radius:8px;word-break:break-all">' +
+            (e.message || e) +
+            "</div>" +
+            "</div>";
+          loading.style.display = "flex";
+        }
+      });
+    </script>
+  </body>
+</html>
