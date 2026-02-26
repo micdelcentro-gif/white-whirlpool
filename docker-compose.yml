@@ -1,0 +1,30 @@
+version: '3.9'
+
+services:
+  # ── MICSA LIFT ENGINE — API REST + WebSocket ──────────────────────────────
+  api:
+    build: .
+    container_name: micsa-lift-engine
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - NODE_ENV=production
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── SIMULIFT PRO — Frontend estático (Three.js) ───────────────────────────
+  frontend:
+    image: nginx:alpine
+    container_name: simulift-frontend
+    ports:
+      - "3700:80"
+    volumes:
+      - .:/usr/share/nginx/html:ro
+    restart: unless-stopped
+    depends_on:
+      - api

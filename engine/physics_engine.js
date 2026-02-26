@@ -1,0 +1,236 @@
+/**
+ * MICSA LIFT ENGINE — Physics Engine (Node.js)
+ * Equivalente a physics_engine.py con PyBullet
+ *
+ * Motor de física analítica para izajes industriales.
+ * Implementa Pick & Tilt (equilibrio de momentos estático).
+ *
+ * Normas: OSHA 29 CFR 1910.180 | NOM-006-STPS-2014 | ISO 12480-1
+ */
+
+'use strict';
+
+const GRAVITY         = 9.81;   // m/s²
+const MAX_UTIL        = 0.80;   // 80% límite OSHA / Walmart México
+const DESIGN_FACTOR   = 1.10;   // Factor de diseño FD
+const MIN_CLEARANCE   = 0.30;   // m — margen mínimo hook/obstáculo
+const SIM_STEPS       = 120;    // pasos de simulación (0°→90°)
+
+// ─── CLASES DE DATOS ──────────────────────────────────────────────────────────
+
+class Load {
+    constructor({ name, weight_kg, cg_height_m, height_m }) {
+        this.name          = name;
+        this.weight_kg     = weight_kg;
+        this.cg_height_m   = cg_height_m;
+        this.height_m      = height_m;
+        this.design_weight = Math.round(weight_kg * DESIGN_FACTOR);
+    }
+}
+
+class Crane {
+    constructor({ name, capacity_kg, boom_length_m, base_weight_kg,
+                  outrigger_area_m2, radius_m = 4.0, lug_sup = 6.0, lug_inf = 2.0 }) {
+        this.name              = name;
+        this.capacity_kg       = capacity_kg;
+        this.boom_length_m     = boom_length_m;
+        this.base_weight_kg    = base_weight_kg;
+        this.outrigger_area_m2 = outrigger_area_m2;
+        this.radius_m          = radius_m;
+        this.lug_sup           = lug_sup;
+        this.lug_inf           = lug_inf;
+        this.operative_limit   = Math.round(capacity_kg * MAX_UTIL);
+    }
+}
+
+// ─── MOTOR DE SIMULACIÓN ──────────────────────────────────────────────────────
+
+class LiftPhysicsEngine {
+    constructor(crane, load) {
+        this.crane = crane;
+        this.load  = load;
+    }
+
+    /** Load Moment Indicator (Nm) — equivale a LICCON de Liebherr */
+    lmi(effective_kg, radius_m) {
+        return effective_kg * GRAVITY * radius_m;
+    }
+
+    /** Utilización normalizada [0..1] */
+    utilization(effective_kg) {
+        return effective_kg / this.crane.capacity_kg;
+    }
+
+    /**
+     * Ground Bearing Pressure (Pa)
+     * GBP = (masa_equipo + carga_efectiva×FD) × g / área_outriggers
+     */
+    gbp(effective_kg) {
+        const total = this.crane.base_weight_kg + effective_kg * DESIGN_FACTOR;
+        return (total * GRAVITY) / this.crane.outrigger_area_m2;
+    }
+
+    /**
+     * Tensión en eslingas (kg) — 2 ramales, ángulo de apertura variable.
+     * @param {number} effective_kg — carga en el gancho
+     * @param {number} sling_angle_deg — mitad del ángulo de apertura (típico 50°)
+     */
+    sling_tension(effective_kg, sling_angle_deg = 50) {
+        return effective_kg / (2 * Math.cos(sling_angle_deg * Math.PI / 180));
+    }
+
+    /** Clasificación Simlog: OK / PERFORMANCE / PROCEDURE / FATAL */
+    classify(util, gbp_Pa) {
+        if (util > 0.95)         return 'FATAL';
+        if (util > MAX_UTIL)     return 'PROCEDURE';
+        if (gbp_Pa > 300_000)    return 'PERFORMANCE';
+        return 'OK';
+    }
+
+    /**
+     * simulate_tilt — simulación completa del abatimiento (0°→90°)
+     * Motor analítico Pick & Tilt por equilibrio de momentos estático.
+     *
+     * @param {number} steps — número de pasos
+     * @returns {Object[]} — tabla de resultados
+     */
+    simulate_tilt(steps = SIM_STEPS) {
+        const { lug_sup: LS, lug_inf: LI } = this.crane;
+        const D   = LS - LI;
+        const CG  = this.load.cg_height_m;
+        const W   = this.load.weight_kg;
+        const results = [];
+
+        for (let i = 0; i <= steps; i++) {
+            const angle_deg = (90 * i) / steps;
+            const theta     = angle_deg * Math.PI / 180;
+
+            // Distribución Pick & Tilt (equilibrio de momentos)
+            const liebherrFrac = Math.sin(theta) * (CG / LS)
+                               + Math.cos(theta) * ((CG - LI) / D);
+            const versaFrac    = Math.max(0, 1 - liebherrFrac);
+
+            const liebherr_kg  = W * liebherrFrac;
+            const versa_kg     = W * versaFrac;
+
+            const util   = this.utilization(liebherr_kg);
+            const gbp_Pa = this.gbp(liebherr_kg);
+            const lmi_Nm = this.lmi(liebherr_kg, this.crane.radius_m);
+            const sling  = this.sling_tension(liebherr_kg);
+
+            // Altura del lug superior en el mundo
+            const h_lug = 0.5 + LS * Math.cos(theta);
+
+            // Clearance vs obstáculo en y=7.80m (tubería contraincendio)
+            const clearance_m = Math.max(0, 7.80 - (h_lug + 0.30));
+
+            const status = this.classify(util, gbp_Pa);
+
+            results.push({
+                step:           i,
+                angle_deg:      +angle_deg.toFixed(2),
+                liebherr_kg:    +liebherr_kg.toFixed(1),
+                versa_kg:       +versa_kg.toFixed(1),
+                'liebherr_%':   +(util * 100).toFixed(2),
+                'versa_%':      +(versaFrac * 100).toFixed(2),
+                lmi_kNm:        +(lmi_Nm / 1000).toFixed(2),
+                sling_kg:       +sling.toFixed(1),
+                gbp_kPa:        +(gbp_Pa / 1000).toFixed(2),
+                h_lug_m:        +h_lug.toFixed(3),
+                clearance_m:    +clearance_m.toFixed(3),
+                status,
+            });
+        }
+
+        return results;
+    }
+
+    /** Valida tabla contra normas — devuelve alertas */
+    validate(table) {
+        const alerts = [];
+        for (const row of table) {
+            if (row.status !== 'OK') {
+                const emoji = row.status === 'FATAL' ? '🚨'
+                            : row.status === 'PROCEDURE' ? '⚠️' : 'ℹ️';
+                alerts.push({
+                    type:      row.status,
+                    step:      row.step,
+                    angle_deg: row.angle_deg,
+                    msg: `${emoji} [${row.status}] ${row.angle_deg}° — Liebherr ${row['liebherr_%']}% | GBP ${row.gbp_kPa} kPa`,
+                });
+            }
+        }
+        return alerts;
+    }
+
+    /** Genera resumen ejecutivo del izaje */
+    summary(table) {
+        const maxUtil  = Math.max(...table.map(r => r['liebherr_%']));
+        const maxGBP   = Math.max(...table.map(r => r.gbp_kPa));
+        const maxLMI   = Math.max(...table.map(r => r.lmi_kNm));
+        const minClr   = Math.min(...table.map(r => r.clearance_m));
+        const fatal    = table.filter(r => r.status === 'FATAL').length;
+        const proced   = table.filter(r => r.status === 'PROCEDURE').length;
+
+        return {
+            crane:            this.crane.name,
+            load:             this.load.name,
+            weight_kg:        this.load.weight_kg,
+            design_weight_kg: this.load.design_weight,
+            max_utilization:  maxUtil,
+            max_gbp_kPa:      maxGBP,
+            max_lmi_kNm:      maxLMI,
+            min_clearance_m:  minClr,
+            fatal_events:     fatal,
+            procedure_events: proced,
+            norm_ok:          fatal === 0,
+            norm:             'OSHA 29 CFR 1910.180 | NOM-006-STPS-2014 | ISO 12480-1',
+        };
+    }
+}
+
+// ─── INSTANCIAS PRECONFIGURADAS — MANIOBRA REAL EXPANDER MICSA ───────────────
+
+const EXPANDER = new Load({
+    name:        'Expander MICSA',
+    weight_kg:   17557,
+    cg_height_m: 3.80,
+    height_m:    7.60,
+});
+
+const LIEBHERR = new Crane({
+    name:              'Liebherr LTM 1050',
+    capacity_kg:       18144,
+    boom_length_m:     6.8,
+    base_weight_kg:    36290,
+    outrigger_area_m2: 2.56,
+    radius_m:          4.0,
+    lug_sup:           6.0,
+    lug_inf:           2.0,
+});
+
+const VERSA = new Crane({
+    name:              'Montacargas + Boom Fork',
+    capacity_kg:       3629,
+    boom_length_m:     6.0,
+    base_weight_kg:    14515,
+    outrigger_area_m2: 4.0,
+    radius_m:          2.0,
+    lug_sup:           2.0,
+    lug_inf:           0.5,
+});
+
+const engineExpander = new LiftPhysicsEngine(LIEBHERR, EXPANDER);
+
+module.exports = {
+    Load,
+    Crane,
+    LiftPhysicsEngine,
+    engineExpander,
+    EXPANDER,
+    LIEBHERR,
+    VERSA,
+    GRAVITY,
+    DESIGN_FACTOR,
+    MAX_UTIL,
+};

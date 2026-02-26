@@ -1,0 +1,27 @@
+{
+  "name": "micsa-lift-engine",
+  "version": "2.0.0",
+  "description": "MICSA Lift Engine — Sistema Profesional de Planificación de Izajes Industriales",
+  "main": "engine/api.js",
+  "scripts": {
+    "api":         "node engine/api.js",
+    "frontend":    "npx serve . --listen 3700",
+    "dev":         "node engine/api.js",
+    "bim-test":    "node engine/revit_connector.js",
+    "start":       "node engine/api.js"
+  },
+  "repository": {
+    "type": "git",
+    "url":  "git+https://github.com/micdelcentro-gif/white-whirlpool.git"
+  },
+  "keywords": ["izaje", "grua", "simulacion", "OSHA", "NOM-006", "BIM", "three.js"],
+  "author":  "MICSA",
+  "license": "ISC",
+  "type":    "commonjs",
+  "dependencies": {
+    "cors":    "^2.8.6",
+    "express": "^5.2.1",
+    "ws":      "^8.19.0"
+  }
+}
+
