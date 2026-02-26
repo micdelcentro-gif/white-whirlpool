@@ -2,28 +2,212 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
-    />
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta
-      name="apple-mobile-web-app-status-bar-style"
-      content="black-translucent"
-    />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="theme-color" content="#0a0f1e" />
-    <title>SimuLift Pro — Expander MICSA</title>
+    <meta name="description"
+        content="MICSA Lift Engine — Sistema profesional de simulación y planificación de izajes industriales. Expander MICSA, Liebherr LTM 1050, normativa OSHA/NOM-006." />
+    <title>SimuLift Pro — MICSA Lift Engine v2.0</title>
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;600&display=swap"
-      rel="stylesheet"
-    />
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;600&display=swap"
+        rel="stylesheet" />
     <link rel="stylesheet" href="style.css" />
+    <style>
+        /* ── LMI GAUGE ──────────────────────────────── */
+        .lmi-gauge-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 0 2px;
+        }
+    
+        .lmi-gauge-svg {
+            width: 100%;
+            max-width: 180px;
+        }
+    
+        .lmi-arc-bg {
+            fill: none;
+            stroke: rgba(255, 255, 255, .08);
+            stroke-width: 14;
+        }
+    
+        .lmi-arc-fill {
+            fill: none;
+            stroke: #00d9a3;
+            stroke-width: 14;
+            stroke-linecap: round;
+            transition: stroke-dashoffset .6s ease, stroke .4s;
+        }
+    
+        .lmi-needle {
+            transform-origin: 50% 80%;
+            transition: transform .6s ease;
+        }
+    
+        .lmi-pct-text {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 22px;
+            font-weight: 900;
+            fill: #ccdaff;
+            text-anchor: middle;
+        }
+    
+        .lmi-label {
+            font-family: Inter, sans-serif;
+            font-size: 10px;
+            fill: #506080;
+            text-anchor: middle;
+        }
+    
+        .lmi-limit {
+            font-family: Inter, sans-serif;
+            font-size: 8px;
+            fill: #ff9a2e;
+            text-anchor: middle;
+        }
+    
+        /* ── WS STATUS DOT ──────────────────────────── */
+        .ws-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ff3f3f;
+            display: inline-block;
+            margin-right: 5px;
+            transition: background .4s;
+        }
+    
+        .ws-dot.connected {
+            background: #00d9a3;
+            box-shadow: 0 0 6px #00d9a3;
+            animation: wsPulse 2s ease-in-out infinite;
+        }
+    
+        @keyframes wsPulse {
+    
+            0%,
+            100% {
+                opacity: 1
+            }
+    
+            50% {
+                opacity: .5
+            }
+        }
+    
+        /* ── ROI PANEL ──────────────────────────────── */
+        .roi-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+    
+        .roi-card {
+            background: rgba(0, 217, 163, .07);
+            border: 1px solid rgba(0, 217, 163, .18);
+            border-radius: 10px;
+            padding: 10px;
+        }
+    
+        .roi-label {
+            font-size: 9px;
+            color: #506080;
+            text-transform: uppercase;
+            letter-spacing: .8px;
+        }
+    
+        .roi-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            font-weight: 900;
+            color: #00d9a3;
+            margin-top: 3px;
+        }
+    
+        .roi-value.yellow {
+            color: #f5c518;
+        }
+    
+        .roi-value.red {
+            color: #ff3f3f;
+        }
+    
+        .market-table {
+            width: 100%;
+            font-size: 10px;
+            border-collapse: collapse;
+            margin-top: 8px;
+        }
+    
+        .market-table th {
+            color: #506080;
+            font-weight: 600;
+            padding: 4px 6px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, .06);
+            font-size: 9px;
+            text-transform: uppercase;
+        }
+    
+        .market-table td {
+            padding: 5px 6px;
+            border-bottom: 1px solid rgba(255, 255, 255, .04);
+            color: #ccdaff;
+        }
+    
+        .market-table tr.ours td {
+            color: #00d9a3;
+            font-weight: 700;
+        }
+    
+        /* ── REALTIME CHART ─────────────────────────── */
+        #rt-chart-wrap {
+            position: relative;
+            width: 100%;
+            height: 80px;
+            margin: 8px 0 4px;
+        }
+    
+        #rt-canvas {
+            width: 100%;
+            height: 100%;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, .03);
+            border: 1px solid rgba(255, 255, 255, .06);
+        }
+    
+        /* ── BADGE API ─────────────────────────────── */
+        .badge-api {
+            background: rgba(255, 63, 63, .12);
+            border: 1px solid rgba(255, 63, 63, .3);
+            border-radius: 20px;
+            padding: 3px 9px;
+            font-size: 10px;
+            font-weight: 600;
+            color: #ff6060;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+    
+        .badge-api.ok {
+            background: rgba(0, 217, 163, .12);
+            border-color: rgba(0, 217, 163, .3);
+            color: #00d9a3;
+        }
+    </style>
   </head>
   <body>
     <div id="loading">
-      <div class="loading-logo">⚙️ SimuLift Pro</div>
+    <div class="loading-logo">⚙️ MICSA Lift Engine</div>
       <div class="loading-spinner"></div>
-      <div class="loading-text">Cargando maniobra Expander MICSA...</div>
+    <div class="loading-text">Iniciando motor de física + API WebSocket...</div>
     </div>
 
     <canvas id="canvas"></canvas>
@@ -33,13 +217,15 @@
       <div class="logo">
         <span>⚙️</span>
         <div>
-          <div class="logo-name">SimuLift Pro</div>
-          <div class="logo-sub">Abatimiento Controlado — Expander MICSA</div>
+        <div class="logo-name">MICSA Lift Engine</div>
+        <div class="logo-sub">SimuLift Pro v2.0 — Expander 17,557 kg</div>
         </div>
       </div>
       <div class="header-badges">
         <div class="badge" id="status-badge">🔧 PREP</div>
-        <div class="badge warn">17,557 kg</div>
+        <div class="badge-api" id="api-badge"><span class="ws-dot" id="ws-dot"></span>API</div>
+        <a href="http://localhost:8000/report" target="_blank" class="badge warn" style="text-decoration:none;cursor:pointer"
+            title="Ver reporte PDF">📄 PDF</a>
       </div>
     </header>
 
@@ -61,6 +247,8 @@
         </div>
         <div class="controls-row controls-row-mt">
           <button class="btn btn-danger" id="btn-reset">↺ Reiniciar</button>
+        <a href="http://localhost:8000/report" target="_blank" class="btn btn-secondary"
+            style="text-decoration:none;display:flex;align-items:center;justify-content:center">📄</a>
         </div>
         <div class="tooltip-hint">Arrastra para rotar • Pellizca para zoom</div>
       </div>
@@ -70,69 +258,160 @@
       </div>
     </div>
 
-    <!-- RIGHT PANEL: Monitoring -->
+    <!-- RIGHT PANEL: Monitoring + LMI + ROI -->
     <div id="right-panel">
+<!-- LMI GAUGE — Load Moment Indicator (tipo LICCON Liebherr) -->
+<div class="panel-card">
+    <div class="panel-title">LMI — Load Moment Indicator</div>
+    <div class="lmi-gauge-wrap">
+        <svg class="lmi-gauge-svg" viewBox="0 0 200 130">
+            <!-- Arco fondo 180° -->
+            <path class="lmi-arc-bg" d="M20,110 A80,80 0 0,1 180,110" />
+            <!-- Arco fill (stroke-dasharray se calcula en JS) -->
+            <path class="lmi-arc-fill" id="lmi-arc" d="M20,110 A80,80 0 0,1 180,110" stroke-dasharray="251.2"
+                stroke-dashoffset="251.2" />
+            <!-- Marcador 80% (OSHA limit) -->
+            <line id="lmi-limit-mark" x1="100" y1="30" x2="100" y2="44" stroke="#ff9a2e" stroke-width="3" />
+            <!-- Textos -->
+            <text class="lmi-pct-text" x="100" y="96" id="lmi-pct-txt">—</text>
+            <text class="lmi-label" x="100" y="112">Liebherr LTM 1050</text>
+            <text class="lmi-limit" x="152" y="52">80%</text>
+            <text class="lmi-label" x="22" y="125">0%</text>
+            <text class="lmi-label" x="176" y="125">100%</text>
+        </svg>
+    </div>
+    <!-- Mini realtime chart -->
+    <div id="rt-chart-wrap">
+        <canvas id="rt-canvas"></canvas>
+    </div>
+    <div class="stat-row">
+        <span class="stat-label">LMI kNm</span>
+        <span class="stat-value" id="s-lmi">—</span>
+    </div>
+    <div class="stat-row">
+        <span class="stat-label">GBP Outriggers</span>
+        <span class="stat-value" id="s-gbp">—</span>
+    </div>
+</div>
+
+<!-- Liebherr -->
       <div class="panel-card">
         <div class="panel-title">Grúa Liebherr LTM 1050</div>
         <div class="stat-row">
-          <span class="stat-label">Ángulo Expander</span
-          ><span class="stat-value" id="s-angle">0°</span>
+        <span class="stat-label">Ángulo Expander</span>
+        <span class="stat-value" id="s-angle">0°</span>
         </div>
         <div class="stat-row">
-          <span class="stat-label">Carga Liebherr</span
-          ><span class="stat-value warn" id="s-titan-load">—</span>
+        <span class="stat-label">Carga Liebherr</span>
+        <span class="stat-value warn" id="s-titan-load">—</span>
         </div>
         <div class="stat-row">
-          <span class="stat-label">Util. Liebherr</span
-          ><span class="stat-value" id="s-titan-util">—</span>
+        <span class="stat-label">Util. Liebherr</span>
+        <span class="stat-value" id="s-titan-util">—</span>
         </div>
         <div class="stat-row">
-          <span class="stat-label">Radio / Capacidad</span
-          ><span class="stat-value">4.0 m / 18,144 kg</span>
+        <span class="stat-label">Radio / Capacidad</span>
+        <span class="stat-value">4.0 m / 18,144 kg</span>
         </div>
         <div class="stat-row">
-          <span class="stat-label">Tensión Eslinga</span
-          ><span class="stat-value accent2" id="s-forks">—</span>
+        <span class="stat-label">Tensión Eslinga</span>
+        <span class="stat-value accent2" id="s-forks">—</span>
         </div>
-      </div>
+        <div class="stat-row">
+            <span class="stat-label">Util. LMI</span>
+            <span class="stat-value" id="s-sf">—</span>
+        </div>
+        <div class="safety-bar">
+            <div class="safety-fill" id="safety-fill"></div>
+        </div>
+        </div>
+        
+        <!-- Montacargas -->
       <div class="panel-card">
         <div class="panel-title">Montacargas + Boom (Tailing)</div>
         <div class="stat-row">
-          <span class="stat-label">Reacción Pivote</span
-          ><span class="stat-value" id="s-versa-load">—</span>
+        <span class="stat-label">Reacción Pivote</span>
+        <span class="stat-value" id="s-versa-load">—</span>
         </div>
         <div class="stat-row">
-          <span class="stat-label">Util. Boom (ctrl)</span
-          ><span class="stat-value" id="s-versa-util">—</span>
+        <span class="stat-label">Util. Boom (ctrl)</span>
+        <span class="stat-value" id="s-versa-util">—</span>
         </div>
         <div class="stat-row">
-          <span class="stat-label">Reparto Liebherr/MC</span
-          ><span class="stat-value accent2" id="s-split">—</span>
+        <span class="stat-label">Reparto Liebherr/MC</span>
+        <span class="stat-value accent2" id="s-split">—</span>
         </div>
-        <div class="stat-note">
-          ⚙️ Montacargas controla pivote, no comparte carga
+        <div class="stat-note">⚙️ Montacargas controla pivote, no comparte carga</div>
         </div>
-      </div>
+<!-- Seguridad -->
       <div class="panel-card">
-        <div class="panel-title">Seguridad</div>
+        <div class="panel-title">Seguridad Normativa</div>
         <div class="stat-row">
-          <span class="stat-label">Util. Liebherr</span
-          ><span class="stat-value" id="s-sf">—</span>
-        </div>
-        <div class="safety-bar">
-          <div class="safety-fill" id="safety-fill"></div>
-        </div>
-        <div class="stat-row mt8">
-          <span class="stat-label">Clearance Hook/Techo</span
-          ><span class="stat-value" id="s-interf">Normal</span>
+        <span class="stat-label">Clearance Hook/Techo</span>
+        <span class="stat-value" id="s-interf">Normal</span>
         </div>
         <div class="stat-row">
-          <span class="stat-label">Zona Exclusión</span
-          ><span class="stat-value accent2" id="s-zone">Normal</span>
+            <span class="stat-label">Zona Exclusión</span>
+            <span class="stat-value accent2" id="s-zone">Normal</span>
         </div>
         <div class="stat-row">
-          <span class="stat-label">CG Expander</span
-          ><span class="stat-value" id="s-cg">3.80 m</span>
+            <span class="stat-label">CG Expander</span>
+            <span class="stat-value" id="s-cg">3.80 m</span>
+        </div>
+        <div class="stat-note">OSHA 29 CFR 1910.180 | NOM-006-STPS | ISO 12480-1</div>
+        </div>
+        
+        <!-- ROI Panel -->
+        <div class="panel-card">
+            <div class="panel-title">📈 ROI — Retorno de Inversión</div>
+            <div class="roi-grid" id="roi-grid">
+                <div class="roi-card">
+                    <div class="roi-label">Costo Maniobra</div>
+                    <div class="roi-value yellow" id="roi-cost">—</div>
+                </div>
+                <div class="roi-card">
+                    <div class="roi-label">Ahorro Anual</div>
+                    <div class="roi-value" id="roi-saving">—</div>
+                </div>
+                <div class="roi-card">
+                    <div class="roi-label">Retorno</div>
+                    <div class="roi-value" id="roi-pct">—</div>
+                </div>
+                <div class="roi-card">
+                    <div class="roi-label">Payback</div>
+                    <div class="roi-value yellow" id="roi-payback">—</div>
+                </div>
+            </div>
+            <table class="market-table">
+                <tr>
+                    <th>Sistema</th>
+                    <th>Inversión MXN/año</th>
+                </tr>
+                <tbody id="market-tbody"></tbody>
+            </table>
+            <div class="stat-note" style="margin-top:8px">Referencia: Simlog, CRANEbee, 3D Lift Plan (guide.html)</div>
+        </div>
+<!-- API WebSocket Status -->
+<div class="panel-card">
+    <div class="panel-title">🔌 API — MICSA Lift Engine</div>
+    <div class="stat-row">
+        <span class="stat-label">Estado</span>
+        <span class="stat-value" id="api-status">Conectando...</span>
+        </div>
+        <div class="stat-row">
+        <span class="stat-label">Último frame</span>
+        <span class="stat-value" id="api-frame" style="font-size:10px">—</span>
+        </div>
+        <div class="stat-row">
+        <span class="stat-label">Eventos Simlog</span>
+        <span class="stat-value" id="api-errors">—</span>
+        </div>
+        <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
+            <a href="http://localhost:8000/api/simulate" target="_blank" class="cam-btn" style="text-decoration:none">📡
+                REST</a>
+            <a href="http://localhost:8000/report" target="_blank" class="cam-btn" style="text-decoration:none">📄 Reporte</a>
+            <a href="http://localhost:8000/api/alerts" target="_blank" class="cam-btn" style="text-decoration:none">⚠️
+                Alertas</a>
         </div>
       </div>
     </div>
@@ -156,31 +435,24 @@
         <span class="tab-icon">📋</span>
         <span>Fases</span>
       </button>
-      <!-- Center play/pause button -->
-      <button
-        class="tab-btn tab-play"
-        id="tab-play-btn"
-        onclick="mobilePlayPause()"
-      >
+    <button class="tab-btn tab-play" id="tab-play-btn" onclick="mobilePlayPause()">
         <div class="tab-play-inner" id="tab-play-inner">▶</div>
       </button>
       <button class="tab-btn" id="tab-monitor" onclick="showTab('monitor')">
         <span class="tab-icon">📊</span>
         <span>Monitor</span>
       </button>
-      <button class="tab-btn" id="tab-cam" onclick="showTab('cam')">
-        <span class="tab-icon">🎥</span>
-        <span>Cámara</span>
+    <button class="tab-btn" id="tab-roi" onclick="showTab('roi')">
+        <span class="tab-icon">💰</span>
+        <span>ROI</span>
       </button>
     </nav>
 
     <!-- ALERT -->
     <div id="alert-box">
-      <span>⚠️</span
-      ><span id="alert-text">CARGA SUSPENDIDA — Zona de exclusión activa</span>
+    <span>⚠️</span><span id="alert-text">CARGA SUSPENDIDA — Zona de exclusión activa</span>
     </div>
 
-    <!-- SWIPE HINT (shows once on mobile) -->
     <div id="swipe-hint">👆 Toca las pestañas para navegar</div>
 
     <!-- Three.js via CDN -->
@@ -200,16 +472,9 @@
 
       function showTab(tab) {
         _activeTab = tab;
-
-        document
-          .querySelectorAll(".tab-btn:not(.tab-play)")
-          .forEach(function (b) {
-            b.classList.remove("active");
-          });
-
-        var leftPanel = document.getElementById("left-panel");
-        var rightPanel = document.getElementById("right-panel");
-
+          document.querySelectorAll(".tab-btn:not(.tab-play)").forEach(function (b) { b.classList.remove("active"); });
+          var leftPanel = document.getElementById("left-panel");
+          var rightPanel = document.getElementById("right-panel");
         leftPanel.classList.remove("open");
         rightPanel.classList.remove("open");
 
@@ -221,83 +486,145 @@
         } else if (tab === "monitor") {
           document.getElementById("tab-monitor").classList.add("active");
           rightPanel.classList.add("open");
-        } else if (tab === "cam") {
-          document.getElementById("tab-cam").classList.add("active");
-          leftPanel.classList.add("open");
+        } else if (tab === "roi") {
+            document.getElementById("tab-roi").classList.add("active");
+            rightPanel.classList.add("open");
         }
       }
 
-      function mobilePlayPause() {
-        var playBtn = document.getElementById("btn-play");
-        var pauseBtn = document.getElementById("btn-pause");
+        function mobilePlayPause() {
         var tabInner = document.getElementById("tab-play-inner");
-        var tabBtnEl = document.getElementById("tab-play-btn");
-
+          var tabBtnEl = document.getElementById("tab-play-btn");
         if (!_isPlaying) {
-          playBtn.click();
-          _isPlaying = true;
-          tabInner.textContent = "⏸";
-          tabBtnEl.classList.add("playing");
-          showTab("3d");
+            document.getElementById("btn-play").click();
+            _isPlaying = true; tabInner.textContent = "⏸";
+            tabBtnEl.classList.add("playing"); showTab("3d");
         } else {
-          pauseBtn.click();
-          _isPlaying = false;
-          tabInner.textContent = "▶";
+            document.getElementById("btn-pause").click();
+            _isPlaying = false; tabInner.textContent = "▶";
           tabBtnEl.classList.remove("playing");
         }
       }
 
-      document.addEventListener("simulationComplete", function () {
+        document.addEventListener("simulationComplete", function () {
         _isPlaying = false;
         document.getElementById("tab-play-inner").textContent = "▶";
         document.getElementById("tab-play-btn").classList.remove("playing");
       });
 
-      (function () {
-        var tabs = ["fases", "3d", "monitor", "cam"];
-        var startX = 0;
-        var startY = 0;
-
-        document.getElementById("canvas").addEventListener(
-          "touchstart",
-          function (e) {
-            startX = e.touches[0].clientX;
-            startY = e.touches[0].clientY;
-          },
-          { passive: true },
-        );
-
-        document.getElementById("canvas").addEventListener(
-          "touchend",
-          function (e) {
-            var dx = e.changedTouches[0].clientX - startX;
-            var dy = e.changedTouches[0].clientY - startY;
-            if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-              var idx = tabs.indexOf(_activeTab);
-              if (dx < 0 && idx < tabs.length - 1) showTab(tabs[idx + 1]);
-              else if (dx > 0 && idx > 0) showTab(tabs[idx - 1]);
-            }
-          },
-          { passive: true },
-        );
+        // Swipe
+        (function () {
+            var tabs = ["fases", "3d", "monitor", "roi"];
+            var startX = 0, startY = 0;
+            document.getElementById("canvas").addEventListener("touchstart", function (e) { startX = e.touches[0].clientX; startY = e.touches[0].clientY; }, { passive: true });
+            document.getElementById("canvas").addEventListener("touchend", function (e) {
+                var dx = e.changedTouches[0].clientX - startX;
+                var dy = e.changedTouches[0].clientY - startY;
+                if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+                    var idx = tabs.indexOf(_activeTab);
+                    if (dx < 0 && idx < tabs.length - 1) showTab(tabs[idx + 1]);
+                    else if (dx > 0 && idx > 0) showTab(tabs[idx - 1]);
+                }
+        }, { passive: true });
       })();
 
-      setTimeout(function () {
-        var h = document.getElementById("swipe-hint");
-        if (h) h.remove();
-      }, 4000);
-
-      window.addEventListener("resize", function () {
+        setTimeout(function () { var h = document.getElementById("swipe-hint"); if (h) h.remove(); }, 4000);
+        window.addEventListener("resize", function () {
         if (window.innerWidth >= 768) {
           document.getElementById("left-panel").classList.remove("open");
           document.getElementById("right-panel").classList.remove("open");
         }
       });
+
+    // ── LMI GAUGE UPDATE (llamado desde sim.js via window) ──────────────────
+    window.updateLMI = function (pct, lmiKNm, gbpKPa) {
+        var arc = document.getElementById("lmi-arc");
+        var txt = document.getElementById("lmi-pct-txt");
+        if (!arc) return;
+        var total = 251.2;
+        var offset = total - (total * Math.min(pct, 100) / 100);
+        arc.style.strokeDashoffset = offset;
+        var color = pct > 80 ? "#ff3f3f" : pct > 60 ? "#ff9a2e" : pct > 40 ? "#f5c518" : "#00d9a3";
+        arc.style.stroke = color;
+        txt.textContent = pct > 0 ? pct + "%" : "—";
+        txt.setAttribute("fill", color);
+        if (lmiKNm) document.getElementById("s-lmi").textContent = lmiKNm + " kNm";
+        if (gbpKPa) {
+            var el = document.getElementById("s-gbp");
+            el.textContent = gbpKPa + " kPa";
+            el.style.color = gbpKPa > 300 ? "#ff3f3f" : "#00d9a3";
+        }
+        // Realtime chart
+        window._chartData = window._chartData || [];
+        window._chartData.push(pct);
+        if (window._chartData.length > 60) window._chartData.shift();
+        drawChart(window._chartData);
+    };
+
+    function drawChart(data) {
+        var cv = document.getElementById("rt-canvas");
+        if (!cv) return;
+        var ctx = cv.getContext("2d");
+        var W = cv.offsetWidth, H = cv.offsetHeight;
+        cv.width = W; cv.height = H;
+        ctx.clearRect(0, 0, W, H);
+        if (data.length < 2) return;
+        var step = W / (data.length - 1);
+        ctx.beginPath();
+        data.forEach(function (v, i) {
+            var x = i * step;
+            var y = H - (v / 100) * H;
+            i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        });
+        ctx.strokeStyle = "#00d9a3";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        // Línea 80% OSHA
+        var y80 = H - 0.8 * H;
+        ctx.beginPath(); ctx.moveTo(0, y80); ctx.lineTo(W, y80);
+        ctx.strokeStyle = "rgba(255,154,46,.5)"; ctx.lineWidth = 1; ctx.setLineDash([4, 3]);
+        ctx.stroke(); ctx.setLineDash([]);
+    }
+
+    // ── ROI INIT (llamado desde sim.js) ─────────────────────────────────────
+    window.initROI = function (roiData, market) {
+        var fmt = function (n) { return "$ " + n.toLocaleString("es-MX"); };
+        document.getElementById("roi-cost").textContent = fmt(roiData.maneuver_cost_mxn);
+        document.getElementById("roi-saving").textContent = fmt(roiData.total_savings_yr) + "/año";
+        document.getElementById("roi-pct").textContent = "+" + roiData.roi_pct + "%";
+        document.getElementById("roi-payback").textContent = roiData.payback_months + " meses";
+        var tbody = document.getElementById("market-tbody");
+        if (tbody && market) {
+            tbody.innerHTML = market.map(function (m, i) {
+                return "<tr" + (i === 0 ? " class='ours'" : "") + "><td>" + m.product + "</td><td>" + fmt(m.cost_mxn) + "</td></tr>";
+            }).join("");
+        }
+    };
+
+    // ── WS STATUS (llamado desde sim.js) ────────────────────────────────────
+    window.setWSStatus = function (connected, msg) {
+        var dot = document.getElementById("ws-dot");
+        var badge = document.getElementById("api-badge");
+        var status = document.getElementById("api-status");
+        if (dot) dot.className = "ws-dot" + (connected ? " connected" : "");
+        if (badge) badge.className = "badge-api" + (connected ? " ok" : "");
+        if (status) status.textContent = connected ? "✅ Conectado : 8000" : "⚠️ " + (msg || "Sin API");
+    };
+
+    window.setWSFrame = function (row) {
+        var el = document.getElementById("api-frame");
+        if (el && row) el.textContent = row.angle_deg + "° | " + row.liebherr_kg + " kg | " + row.status;
+    };
+
+    window.setSimlogErrors = function (count) {
+        var el = document.getElementById("api-errors");
+        if (el) { el.textContent = count + " evento" + (count !== 1 ? "s" : ""); el.style.color = count > 0 ? "#ff9a2e" : "#00d9a3"; }
+    };
     </script>
 
     <script type="module" src="sim.js"></script>
     <script>
-      window.addEventListener("error", function (e) {
+        window.addEventListener("error", function (e) {
         var loading = document.getElementById("loading");
         if (loading) {
           loading.innerHTML =
@@ -305,9 +632,7 @@
             '<div style="font-size:22px;margin-bottom:12px">⚠️ Error de carga</div>' +
             '<div style="font-size:13px;opacity:0.8;margin-bottom:8px">Revisa la consola (F12)</div>' +
             '<div style="font-size:11px;background:rgba(0,0,0,0.4);padding:10px;border-radius:8px;word-break:break-all">' +
-            (e.message || e) +
-            "</div>" +
-            "</div>";
+              (e.message || e) + "</div></div>";
           loading.style.display = "flex";
         }
       });

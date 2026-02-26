@@ -2,6 +2,67 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { simExpander, liftTable, normativeAlerts, DESIGN_FACTOR, MAX_UTILIZATION, MIN_CLEARANCE_M } from './physics.js';
+import { roiExpander } from './roi.js';
+
+// ── WEBSOCKET — conexión a MICSA Lift Engine API (localhost:8000) ──────────────
+// Si la API no está corriendo, el simulador funciona igual (modo offline).
+let ws = null;
+let wsConnected = false;
+
+function connectWS() {
+    try {
+        ws = new WebSocket('ws://localhost:8000/ws');
+
+        ws.onopen = () => {
+            wsConnected = true;
+            window.setWSStatus && window.setWSStatus(true);
+            console.log('[SimuLift] WebSocket conectado al motor de física');
+        };
+
+        ws.onmessage = (evt) => {
+            try {
+                const msg = JSON.parse(evt.data);
+                if (msg.type === 'PHYSICS_STATE' && msg.row) {
+                    window.setWSFrame && window.setWSFrame(msg.row);
+                }
+            } catch(e) {}
+        };
+
+        ws.onerror = () => {
+            wsConnected = false;
+            window.setWSStatus && window.setWSStatus(false, 'API offline — modo local');
+        };
+
+        ws.onclose = () => {
+            wsConnected = false;
+            window.setWSStatus && window.setWSStatus(false, 'Reconectando...');
+            // Reintentar cada 5s
+            setTimeout(connectWS, 5000);
+        };
+    } catch(e) {
+        window.setWSStatus && window.setWSStatus(false, 'Sin API');
+    }
+}
+
+/** Envía el ángulo actual al motor para recibir física en tiempo real */
+function queryWSPhysics(angle_deg) {
+    if (ws && wsConnected && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'QUERY_ANGLE', angle_deg }));
+    }
+}
+
+// Inicializar conexión async (no bloquea el arranque del simulador)
+setTimeout(connectWS, 800);
+
+// ── ROI — inicializar panel ───────────────────────────────────────────────────
+setTimeout(() => {
+    try {
+        const roi    = roiExpander.roi();
+        const market = roiExpander.market_comparison();
+        window.initROI && window.initROI(roi, market);
+    } catch(e) { console.warn('ROI init error:', e); }
+}, 400);
+
 
 // ── RENDERER — configuración PBR nivel industrial ──
 const canvas = document.getElementById('canvas');
@@ -1418,19 +1479,39 @@ function updateUI(pid) {
     // Barra de seguridad LMI (% Liebherr)
     const sf   = Math.max(titanUtil, 0);
     const fill = document.getElementById('safety-fill');
-    fill.style.width      = Math.min(sf, 100) + '%';
-    fill.style.background = sf > 80 ? '#ff3f3f' : sf > 60 ? '#ff8800' : sf > 40 ? '#f5c518' : '#00d9a3';
+    if (fill) {
+        fill.style.width      = Math.min(sf, 100) + '%';
+        fill.style.background = sf > 80 ? '#ff3f3f' : sf > 60 ? '#ff8800' : sf > 40 ? '#f5c518' : '#00d9a3';
+    }
     document.getElementById('s-sf').textContent = sf > 0 ? sf + '% LMI' : '—';
+
+    // ── LMI GAUGE SVG (LICCON-style) ──
+    // Obtener LMI y GBP del row de la tabla si estamos en maniobra
+    let lmiKNm = 0, gbpKPa = 0;
+    if (pid >= 3 && pid <= 9) {
+        const row = liftTable.reduce((best, r) =>
+            Math.abs(r.angle_deg - angleDeg) < Math.abs(best.angle_deg - angleDeg) ? r : best
+        , liftTable[0]);
+        lmiKNm = row.lmi_kNm;
+        gbpKPa = row.gbp_kPa;
+    }
+    window.updateLMI && window.updateLMI(sf, lmiKNm, gbpKPa);
+
+    // ── WEBSOCKET — enviar ángulo al motor para física en tiempo real ──
+    if (isPlaying && pid >= 3) queryWSPhysics(angleDeg);
+
+    // ── SIMLOG ERRORS COUNT ──
+    window.setSimlogErrors && window.setSimlogErrors(simlogErrors.length);
 
     // Badge de estado
     const badge = document.getElementById('status-badge');
     if (badge) {
-        const isDone = pid === 10;
-        const isAb   = pid >= 4 && pid <= 8;
+        const isDone  = pid === 10;
+        const isAb    = pid >= 4 && pid <= 8;
         const isHoriz = pid >= 8;
         badge.textContent = isDone  ? '✅ COMPLETADO' :
                             isHoriz ? '🏁 HORIZONTAL' :
-                            isAb    ? '🔄 ABATIENDO' :
+                            isAb    ? '🔄 ABATIENDO'  :
                             pid >= 2 ? '⚙️ EN MANIOBRA' : '🔧 PREPARACIÓN';
         badge.style.background = isDone  ? '#00d9a3' :
                                  isHoriz ? '#8b5cf6' :
