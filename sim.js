@@ -1183,64 +1183,64 @@ const PHASES = [
 // ── ESTADO ──
 const R2 = Math.PI / 2;
 
-// RESTRICCIÓN FÍSICA REAL:
-// L_equipo=7.60m, lug_sup=6.0m, base_exp_y=0.5m
-// h_lug_sup(θ) = 0.5 + 6.0×cos(θ)
-// Tubería contraincendio a y=7.80m → clearance = 7.80 - h_lug_sup - 1.0(hook) - 0.15(min)
-// 7.80 - 1.0 - 0.15 = 6.65m → 0.5 + 6.0×cos(θ) = 6.65 → cos(θ) = 6.15/6.0 → ¡siempre interferencia!
-// Ángulo máximo REAL: donde h_lug_sup + hook ≤ H_TUBERIA_CI - 0.15
-// 0.5 + 6.0×cos(θ) + 1.0 ≤ 7.80 - 0.15 → 6.0×cos(θ) ≤ 6.15 → θ ≥ acos(1.025)=imposible
-// En la práctica de las fotos: θ_max ≈ 60°-65° (hook se ajusta con drop variable)
-// Con hookDrop SHORT (3.5m) a θ=63°: h_hook_world = titanGrp.y + boom_tip_y - hookDrop
-// Modelo simplificado: DETENEMOS cuando rot ≥ R2*0.70 (≈63°)
-const ROT_MAX_FISICA = R2 * 0.70; // 63° — límite geométrico real por techo
-let ceilingCollision = false;     // flag: límite físico alcanzado
+// FÍSICA REAL DE ABATIMIENTO CONTROLADO (Pick & Tilt):
+// El hook drop se controla dinámicamente para mantener clearance ≥ 0.30m
+// con la tubería contraincendio (y=7.80m).
+// A medida que el Expander gira de vertical→horizontal, el lug superior
+// baja: h_lug(θ) = 0.5 + 6.0×cos(θ)
+// El hook Liebherr SE AJUSTA para estar siempre sobre el lug superior.
+// La operación COMPLETA llega a θ=90° (horizontal) sobre la base rodante.
+
+const H_TUBERIA_CI = 7.8; // m — límite real de clearance
+const H_CLEARANCE_MIN = 0.30; // m — margen mínimo de seguridad
+let ceilingCollision = false;
+let simlogErrors = [];  // registro de errores tipo Simlog
+let kpiStartTime = null;
 
 const S = {
-    rot: 0,          // 0=vertical → ROT_MAX_FISICA=máximo posible dentro de nave
-    hookDrop: 4.5,   // Titan hook drop (controlado)
-    boomAngle: -0.1, // VersaLift boom angle (rad)
-    versaX: -8,      // VersaLift X position — lado IZQUIERDO del Expander (X=0)
+    rot: 0,          // 0=vertical → PI/2=horizontal
+    hookDrop: 4.5,
+    boomAngle: -0.1,
+    versaX: -8,
     rigVis: false,
     envVis: false,
     cgVis: false,
 };
 
-// SNAPS — grúa DERECHA (X=10), Expander en X=0, VersaLift en X=-8 (izquierda/cola)
-// hookDrop corto (4.5m) porque el boom está a 52° y la punta a ~7.5m
+// SNAPS CORREGIDOS — rotación completa a 90° (PI/2)
+// hookDrop dinámico: se reduce conforme el lug baja para mantener clearance
 const SNAPS = {
-    '-1': { rot: 0, hookDrop: 4.5, boomAngle: -0.1, versaX: -8, rigVis: false, envVis: false, cgVis: false },
-    '0': { rot: 0, hookDrop: 4.5, boomAngle: -0.1, versaX: -8, rigVis: false, envVis: false, cgVis: false },
-    '1': { rot: 0, hookDrop: 4.5, boomAngle: -0.1, versaX: -8, rigVis: false, envVis: false, cgVis: false },
-    '2': { rot: 0, hookDrop: 3.8, boomAngle: -0.1, versaX: -8, rigVis: true, envVis: false, cgVis: true },
-    '3': { rot: 0, hookDrop: 3.5, boomAngle: 0.0, versaX: -8, rigVis: true, envVis: true, cgVis: true },
-    // Fases 4-6: Expander gira, VersaLift controla pivote inferior
-    '4': { rot: R2 * 0.22, hookDrop: 3.8, boomAngle: 0.10, versaX: -8.0, rigVis: true, envVis: true, cgVis: true },
-    '5': { rot: R2 * 0.44, hookDrop: 4.2, boomAngle: 0.32, versaX: -8.0, rigVis: true, envVis: true, cgVis: true },
-    // Fase 6: PUNTO CRÍTICO — lug superior más cerca de tuberías
-    '6': { rot: R2 * 0.60, hookDrop: 4.8, boomAngle: 0.52, versaX: -8.5, rigVis: true, envVis: true, cgVis: true },
-    // Fase 7: ÁNGULO MÁXIMO FÍSICO ≈63°
-    '7': { rot: ROT_MAX_FISICA, hookDrop: 5.2, boomAngle: 0.48, versaX: -9.0, rigVis: true, envVis: true, cgVis: true },
-    '8': { rot: ROT_MAX_FISICA, hookDrop: 5.5, boomAngle: 0.20, versaX: -9.0, rigVis: true, envVis: true, cgVis: true },
-    '9': { rot: ROT_MAX_FISICA, hookDrop: 5.8, boomAngle: -0.05, versaX: -9.0, rigVis: false, envVis: false, cgVis: true },
-    '10': { rot: ROT_MAX_FISICA, hookDrop: 6.0, boomAngle: -0.10, versaX: -14, rigVis: false, envVis: false, cgVis: false },
+    '-1': { rot: 0,             hookDrop: 4.5, boomAngle: -0.10, versaX: -8.0,  rigVis: false, envVis: false, cgVis: false },
+    '0':  { rot: 0,             hookDrop: 4.5, boomAngle: -0.10, versaX: -8.0,  rigVis: false, envVis: false, cgVis: false },
+    '1':  { rot: 0,             hookDrop: 4.5, boomAngle: -0.10, versaX: -8.0,  rigVis: false, envVis: false, cgVis: false },
+    '2':  { rot: 0,             hookDrop: 3.8, boomAngle: -0.10, versaX: -8.0,  rigVis: true,  envVis: false, cgVis: true  },
+    '3':  { rot: 0,             hookDrop: 3.2, boomAngle:  0.00, versaX: -8.0,  rigVis: true,  envVis: true,  cgVis: true  },
+    // Fase 4: inicio abatimiento ~20°
+    '4':  { rot: R2 * 0.22,     hookDrop: 3.5, boomAngle:  0.10, versaX: -8.0,  rigVis: true,  envVis: true,  cgVis: true  },
+    // Fase 5: 40° — distribución 60/40
+    '5':  { rot: R2 * 0.44,     hookDrop: 4.0, boomAngle:  0.32, versaX: -8.0,  rigVis: true,  envVis: true,  cgVis: true  },
+    // Fase 6: 60° — punto crítico de interferencia geométrica
+    '6':  { rot: R2 * 0.67,     hookDrop: 5.0, boomAngle:  0.52, versaX: -8.5,  rigVis: true,  envVis: true,  cgVis: true  },
+    // Fase 7: 80° — apoyo progresivo en base rodante
+    '7':  { rot: R2 * 0.89,     hookDrop: 6.2, boomAngle:  0.45, versaX: -9.0,  rigVis: true,  envVis: true,  cgVis: true  },
+    // Fase 8: 90° HORIZONTAL — Expander sobre base rodante
+    '8':  { rot: R2 * 1.00,     hookDrop: 7.0, boomAngle:  0.18, versaX: -9.2,  rigVis: true,  envVis: true,  cgVis: true  },
+    // Fase 9: liberación de eslingas
+    '9':  { rot: R2 * 1.00,     hookDrop: 7.5, boomAngle: -0.05, versaX: -9.5,  rigVis: false, envVis: false, cgVis: true  },
+    // Fase 10: retiro de equipos
+    '10': { rot: R2 * 1.00,     hookDrop: 8.0, boomAngle: -0.10, versaX: -14.0, rigVis: false, envVis: false, cgVis: false },
 };
 
 function lerp(a, b, t) { return a + (b - a) * t; }
 function ease(t) { return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t; }
+// Easing más suave para fases críticas (evita aceleración brusca)
+function easeCritical(t) { return 1 - Math.pow(1 - t, 3); }
 
 function applyS() {
-    // Expander rotation: 0=vertical → PI/2=horizontal (grúa lo acuesta)
     expanderGrp.rotation.z = S.rot;
-
-    // Titan hook — baja conforme el Expander se inclina
     updateTitanHook(S.hookDrop);
-
-    // VersaLift BOOM — sube para controlar la parte inferior (anti-péndulo)
     if (versaBoom) versaBoom.rotation.z = S.boomAngle;
     versaGrp.position.x = S.versaX;
-
-    // Rigging + CG visibility
     rigVisible = S.rigVis;
     updateRigging();
     if (cgMarker) cgMarker.visible = S.cgVis;
@@ -1256,12 +1256,14 @@ function snapTo(pid) {
 function animPhase(pid, t) {
     const sn0 = SNAPS[String(pid - 1)] || SNAPS['0'];
     const sn1 = SNAPS[String(pid)] || {};
-    const te = ease(t);
+    // Fases críticas 4-8 usan easing suave para movimiento controlado real
+    const isCritical = pid >= 4 && pid <= 8;
+    const te = isCritical ? easeCritical(t) : ease(t);
     const lp = (k, def) => { if (sn1[k] !== undefined) S[k] = lerp(sn0[k] ?? def, sn1[k], te); };
-    lp('rot', 0); lp('hookDrop', 8); lp('boomAngle', -0.1); lp('versaX', 9);
-    if (t > 0.3 && sn1.rigVis !== undefined) S.rigVis = sn1.rigVis;
-    if (t > 0.3 && sn1.cgVis !== undefined) S.cgVis = sn1.cgVis;
-    if (t > 0.4 && sn1.envVis !== undefined) S.envVis = sn1.envVis;
+    lp('rot', 0); lp('hookDrop', 4.5); lp('boomAngle', -0.1); lp('versaX', -8);
+    if (t > 0.2 && sn1.rigVis !== undefined) S.rigVis = sn1.rigVis;
+    if (t > 0.2 && sn1.cgVis !== undefined) S.cgVis = sn1.cgVis;
+    if (t > 0.3 && sn1.envVis !== undefined) S.envVis = sn1.envVis;
     applyS();
 }
 
@@ -1310,6 +1312,14 @@ function buildUI() {
     updateUI(0);
 }
 
+// ── AUTO-CÁMARA POR FASE ──
+const PHASE_CAMS = {
+    0: 'general', 1: 'aerea', 2: 'expander', 3: 'titan',
+    4: 'expander', 5: 'titan', 6: 'expander', 7: 'versa',
+    8: 'expander', 9: 'general', 10: 'aerea'
+};
+let autoCamEnabled = true;
+
 function updateUI(pid) {
     PHASES.forEach(p => {
         const e = document.getElementById('ph-' + p.id);
@@ -1317,153 +1327,188 @@ function updateUI(pid) {
         if (!e || !d) return;
         e.classList.remove('active', 'done'); d.classList.remove('active', 'done');
         if (p.id < pid) { e.classList.add('done'); d.classList.add('done'); }
-        if (p.id === pid) { e.classList.add('active'); d.classList.add('active'); }
+        if (p.id === pid) { e.classList.add('active'); d.classList.add('active'); e.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
     });
     const p = PHASES[pid] || PHASES[0];
     document.getElementById('step-title').textContent = p.icon + ' ' + p.name;
     document.getElementById('step-desc').textContent = p.desc;
     const ab = document.getElementById('alert-box');
+    const angleDegNow = Math.round((S.rot || 0) * 180 / Math.PI);
     if (p.alert) {
         ab.style.display = 'flex';
         document.getElementById('alert-text').textContent =
-            pid === 5 ? 'FASE CRÍTICA 45°: Distribución 60/40 — Liebherr 11,591 kg (momento). Montacargas estabiliza pivote.' :
-                pid === 6 ? '🚨 PUNTO CRÍTICO: Hook block a ~30 cm del techo. Interferencia geométrica máxima con tuberías.' :
-                    'CARGA SUSPENDIDA — Montacargas controla pivote. Liebherr absorbe carga progresivamente.';
+            pid === 5 ? `⚙️ ${angleDegNow}° — Distribución 60/40. Liebherr absorbe pico de carga` :
+            pid === 6 ? `🚨 PUNTO CRÍTICO ${angleDegNow}° — Interferencia geométrica máxima. Vel. mínima.` :
+            pid === 7 ? `🛞 ${angleDegNow}° — Base tocando rodillos. Transferencia progresiva a base.` :
+            pid === 8 ? `✅ ${angleDegNow}° — HORIZONTAL. Expander sobre base rodante. Descarga final.` :
+            `⚠️ ${angleDegNow}° — CARGA SUSPENDIDA. Montacargas controla pivote.`;
     } else { ab.style.display = 'none'; }
 
-    // ── FÍSICA REAL: Pick & Tilt — distribución por equilibrio de momentos ──
-    // Expander: L=7.60m, CG al 50% (3.80m), masa=17,557 kg
-    // Punto izaje Liebherr: lug superior y=6.0m desde base
-    // Punto control montacargas: lug inferior y=2.0m desde base
-    // Eje de rotación: base del Expander (al piso)
-    //
-    // Por equilibrio de momentos respecto al punto de izaje inferior:
-    //   F_liebherr × d_liebherr = W × d_cg (componentes perpendiculares)
-    // donde d_liebherr = (6.0 - 2.0) = 4.0m (distancia entre lugs)
-    //       d_cg_desde_lug_inf = (3.80 - 2.0) = 1.80m
-    //
-    // A ángulo θ del horizontal (0=vertical, PI/2=horizontal):
-    // La componente perpendicular al eje del equipo del peso:
-    //   W_perp = W × cos(θ)  [componente que genera momento]
-    // F_liebherr = W × cos(θ) × 1.80/4.0
-    // F_montacargas = W - F_liebherr (reacción en lug inferior)
-    //
-    // Nota: montacargas NO levanta, CONTROLA el pivote (reacción de momento)
+    // ── FÍSICA REAL: Pick & Tilt — Equilibrio de Momentos (ISO 12480 / NOM-006-STPS) ──
+    // Expander: L=7.60m, CG=3.80m (50%), masa=17,557 kg
+    // Liebherr LTM 1050: radio=4.0m → Cap=18,144 kg
+    // VersaLift (montacargas + boom): controla pivote inferior (lug y=2.0m)
+    // Factor de diseño FD=1.10 (OSHA 29 CFR 1910.180)
+    // Límite operativo: 80% cap nominal (Walmart/OSHA)
 
-    const rot = S.rot ?? 0;  // 0=vertical → PI/2=horizontal
-    // θ_desde_vertical = rot → ángulo respecto a la vertical
-    const theta = rot;       // 0=vertical, PI/2=horizontal
+    const rot = S.rot ?? 0;
+    const theta = rot;  // 0=vertical → PI/2=horizontal
     const angleDeg = Math.round(theta * 180 / Math.PI);
 
-    const TOTAL = 17557;     // kg — peso real Expander
-    const L_EQUIPO = 7.60;   // m
-    const CG_FROM_BASE = 3.80; // m — CG al 50%
-    const LUG_SUP = 6.0;     // m — lug izaje superior
-    const LUG_INF = 2.0;     // m — lug control inferior
-    const D_LUGS = LUG_SUP - LUG_INF; // 4.0 m entre puntos de izaje
-    const D_CG_FROM_INF = CG_FROM_BASE - LUG_INF; // 1.80 m
-
-    // Capacidades
-    const CAP_LIEBHERR = 18144; // kg a radio 4.0m (Liebherr LTM 1050)
-    const CAP_MONTACARGAS = 3600; // kg — boom fork attachment ~8,000 lb WLL
-
-    // Altura libre efectiva de nave = 9.0m techo - 0.5m vigas = 8.5m
-    const H_NAVE_LIBRE = 8.5; // m
-    const H_HOOK_BLOCK = 1.0; // altura del hook block colgando (eslinga + bloque)
+    const TOTAL  = 17557;    // kg — peso real
+    const FD     = 1.10;     // factor de diseño
+    const PESO_DISENO = Math.round(TOTAL * FD); // 19,313 kg --- peso de diseño
+    const L_EQ   = 7.60;    // m
+    const CG_BASE= 3.80;    // m
+    const LUG_S  = 6.0;     // m — lug superior
+    const LUG_I  = 2.0;     // m — lug inferior
+    const D_LUGS = LUG_S - LUG_I;  // 4.0 m
+    const D_CG_I = CG_BASE - LUG_I; // 1.80 m
+    const CAP_LB = 18144;   // kg — Liebherr LTM 1050 @ 4.0m
+    const CAP_MC = 3629;    // kg — boom fork ~8,000 lb WLL
+    const RADIO  = 4.0;     // m — radio de operación Liebherr
+    const MASA_GRUA = 36000; // kg — masa Liebherr LTM 1050 (aprox.)
+    const OUT_SPAN  = 6.0;  // m — semiancho entre outriggers
 
     let titanKg = 0, versaKg = 0, titanUtil = 0, versaUtil = 0;
     let slingTension = 0, hookClearance = 0, hAltura = 0;
+    let groundPressure = 0; // kN/m² — presión en outriggers
 
     if (pid >= 3 && pid <= 9) {
-        // Componente perpendicular del peso (genera momento de rotación)
-        // A θ=0 (vertical): F_liebherr = W × cos(0) × 1.80/4.0 = W × 0.45 = 7,900 kg
-        // A θ=45°:  cos(45°)=0.707 → F_liebherr = 7,900×0.707 ≈ 5,586 kg × correction
-        // Pero la grúa TAMBIÉN soporta componente axial → carga real aumenta con ángulo
-        //
-        // Modelo corregido para el pick & tilt:
-        // - Cuando está vertical (θ=0): 90% en montacargas/base, 10% en Liebherr
-        // - Cuando está horizontal (θ=PI/2): 100% en Liebherr, 0% en montacargas
-        // Con CG a 50%: F_liebherr = W × sin(theta) × (CG_from_base/L_equipo)... no
-        //
-        // Modelo pick & tilt real por equilibrio estático:
-        // Si base pivota en el piso y Liebherr en lug sup:
-        // SUM_momentos_base = 0:
-        // F_liebherr × LUG_SUP × cos(theta_from_horiz) = W × CG_FROM_BASE × cos(theta_from_horiz)
-        // Simplificado: F_liebherr ≈ W × CG_FROM_BASE / LUG_SUP cuando está horizontal
-        // Cuando vertical: montacargas absorbe reacción mayor
-        //
-        // Fórmula final adoptada (distribución por ángulo, basada en geometría real):
-        //   liebherrFrac = sin(theta) × (CG_FROM_BASE/LUG_SUP) + cos(theta) × (D_CG_FROM_INF/D_LUGS)
-        const liebherrFrac = Math.sin(theta) * (CG_FROM_BASE / LUG_SUP) +
-            Math.cos(theta) * (D_CG_FROM_INF / D_LUGS);
+        // Distribución de carga por equilibrio de momentos (Pick & Tilt)
+        // liebherrFrac: fracción del peso absorbe Liebherr según ángulo
+        // Cuando θ=0° (vertical): Liebherr soporta mínimo (CG bajo; pivote en base)
+        // Cuando θ=90° (horiz.): Liebherr = W×CG/LUG_S = 17557×3.80/6.0 = 11,120 kg
+        const liebherrFrac = Math.sin(theta) * (CG_BASE / LUG_S) +
+                             Math.cos(theta) * (D_CG_I / D_LUGS);
         const versaFrac = Math.max(0, 1 - liebherrFrac);
 
-        titanKg = Math.round(TOTAL * liebherrFrac);
-        versaKg = Math.round(TOTAL * versaFrac);
-        titanUtil = Math.round((titanKg / CAP_LIEBHERR) * 100);
-        versaUtil = Math.round((versaKg / CAP_MONTACARGAS) * 100);
+        titanKg   = Math.round(TOTAL * liebherrFrac);
+        versaKg   = Math.round(TOTAL * versaFrac);
+        titanUtil = Math.round((titanKg / CAP_LB) * 100);
+        versaUtil = Math.round((versaKg / CAP_MC) * 100);
 
-        // Tensión en eslingas (ángulo de eslinga ≈ 45-55°, 2 ramales)
-        const slingAngleRad = 50 * Math.PI / 180; // 50° de apertura típico
-        slingTension = Math.round(titanKg / (2 * Math.cos(slingAngleRad)));
+        // Tensión en eslingas (2 ramales, apertura 50°)
+        const slingRad = 50 * Math.PI / 180;
+        slingTension = Math.round(titanKg / (2 * Math.cos(slingRad)));
 
-        // Altura del extremo superior del Expander
-        // Cuando el equipo está a ángulo theta de la vertical:
-        // h_top = punto_de_pivote_y + LUG_SUP × cos(theta)   (desde base)
-        // Con base del Expander a y=0.5 (posición inicial):
-        hAltura = 0.5 + LUG_SUP * Math.cos(theta);
+        // Altura del lug superior del Expander en el mundo
+        hAltura = 0.5 + LUG_S * Math.cos(theta);
 
-        // Clearance hook block — contra TUBERÍA CONTRAINCENDIO (7.80m) que es el límite real
-        // Hook block mundo: titanGrp.y(=0) + boom_tip_y(~7.5m lateral corto) - hookDrop
-        // Aproximación: hookTop_mundo ≈ hAltura (lug superior del Expander)
-        // El hook bloque cuelga hookDrop debajo del tip de pluma, pero referenciamos
-        // el lug superior del Expander como punto más alto de la eslinga:
-        hookClearance = Math.max(0, H_TUBERIA_CI - hAltura - 0.25); // 0.25m = block height
+        // Clearance vs tubería contraincendio (y=7.80m)
+        // El bloque del gancho está aprox. a hAltura + 0.30m (eslinga)
+        hookClearance = Math.max(0, H_TUBERIA_CI - (hAltura + 0.30));
+
+        // Ground Bearing Pressure — carga en outriggers del Liebherr
+        // F_outrigger = (MASA_GRUA + titanKg×FD) × 9.81 / (4 × pad_area)
+        // Pad area aprox 0.64m² (800×800mm)
+        const F_total_kN = (MASA_GRUA + titanKg * FD) * 9.81 / 1000;
+        const padArea = 0.64; // m²
+        groundPressure = Math.round(F_total_kN / (4 * padArea)); // kN/m²
+
+        // ── SIMLOG ERROR DETECTION ──
+        if (isPlaying) {
+            // FATAL: utilización > 95%
+            if (titanUtil > 95) {
+                simlogErrors.push({ type: 'FATAL', msg: `Liebherr ${titanUtil}% — SOBRECARGA`, phase: pid });
+            }
+            // PROCEDURE: utilización > 80% (límite OSHA)
+            else if (titanUtil > 80 && !simlogErrors.find(e => e.type === 'PROCEDURE' && e.phase === pid)) {
+                simlogErrors.push({ type: 'PROCEDURE', msg: `Liebherr ${titanUtil}% supera 80% límite OSHA`, phase: pid });
+            }
+            // PERFORMANCE: Ground pressure > 300 kN/m²
+            if (groundPressure > 300 && !simlogErrors.find(e => e.type === 'PERFORMANCE' && e.phase === pid)) {
+                simlogErrors.push({ type: 'PERFORMANCE', msg: `GBP ${groundPressure} kN/m² — revisar terreno`, phase: pid });
+            }
+        }
     }
 
-    document.getElementById('s-angle').textContent = angleDeg + '°';
+    // ── ACTUALIZAR UI ──
+    document.getElementById('s-angle').textContent = angleDeg + '° ' + (pid >= 8 ? '✅ HORIZ.' : pid >= 4 ? '🔄' : '');
     document.getElementById('s-titan-load').textContent = titanKg > 0 ? titanKg.toLocaleString() + ' kg' : '—';
-    document.getElementById('s-titan-util').textContent = titanUtil > 0 ? titanUtil + '%' : '—';
+
+    const utilEl = document.getElementById('s-titan-util');
+    if (titanUtil > 0) {
+        utilEl.textContent = titanUtil + '%';
+        utilEl.style.color = titanUtil > 80 ? '#ff3f3f' : titanUtil > 60 ? '#ff9a2e' : '#00d9a3';
+    } else { utilEl.textContent = '—'; utilEl.style.color = ''; }
+
     document.getElementById('s-versa-load').textContent = versaKg > 0 ? versaKg.toLocaleString() + ' kg' : '—';
     document.getElementById('s-versa-util').textContent = versaUtil > 0 ? versaUtil + '% ⚙️ctrl' : '—';
     document.getElementById('s-split').textContent = pid >= 3 && pid <= 9
-        ? (Math.round(titanKg / TOTAL * 100)) + '% / ' + (Math.round(versaKg / TOTAL * 100)) + '%' : '—';
+        ? Math.round(titanKg / TOTAL * 100) + '% / ' + Math.round(versaKg / TOTAL * 100) + '%' : '—';
     document.getElementById('s-forks').textContent = slingTension > 0
         ? slingTension.toLocaleString() + ' kg' : '—';
 
     // Clearance display
     const clr = document.getElementById('s-interf');
-    if (hookClearance > 0 && pid >= 3) {
-        const clrText = hookClearance.toFixed(2) + ' m libre';
-        clr.textContent = hookClearance < 0.30 ? '🚨 ' + clrText : hookClearance < 0.80 ? '⚠️ ' + clrText : '✅ ' + clrText;
-        clr.style.color = hookClearance < 0.30 ? '#ff3f3f' : hookClearance < 0.80 ? '#ff9a2e' : '#00d9a3';
+    if (pid >= 3 && pid <= 8) {
+        const clrTxt = hookClearance.toFixed(2) + ' m libre';
+        clr.textContent = hookClearance < 0.30 ? '🚨 ' + clrTxt : hookClearance < 0.80 ? '⚠️ ' + clrTxt : '✅ ' + clrTxt;
+        clr.style.color  = hookClearance < 0.30 ? '#ff3f3f' : hookClearance < 0.80 ? '#ff9a2e' : '#00d9a3';
+    } else if (pid >= 9) {
+        clr.textContent = '✅ Despejado'; clr.style.color = '#00d9a3';
     } else {
         clr.textContent = 'Normal'; clr.style.color = '';
     }
 
     document.getElementById('s-zone').textContent = pid >= 2 ? 'ACTIVA r=7m' : 'Normal';
-    document.getElementById('s-cg').textContent = '3.80 m (50%)';
+    document.getElementById('s-cg').textContent   = '3.80 m (50%)';
 
-    const sf = Math.max(titanUtil, 0);
+    // Barra de seguridad LMI (% Liebherr)
+    const sf   = Math.max(titanUtil, 0);
     const fill = document.getElementById('safety-fill');
-    fill.style.width = Math.min(sf, 100) + '%';
+    fill.style.width      = Math.min(sf, 100) + '%';
     fill.style.background = sf > 80 ? '#ff3f3f' : sf > 60 ? '#ff8800' : sf > 40 ? '#f5c518' : '#00d9a3';
-    document.getElementById('s-sf').textContent = sf > 0 ? sf + '%' : '—';
+    document.getElementById('s-sf').textContent = sf > 0 ? sf + '% LMI' : '—';
 
+    // Badge de estado
     const badge = document.getElementById('status-badge');
     if (badge) {
-        badge.textContent = pid === 10 ? '✅ COMPLETADO' : pid >= 4 ? '🔄 ABATIENDO' : pid >= 2 ? '⚙️ EN MANIOBRA' : '🔧 PREPARACIÓN';
-        badge.style.background = pid === 10 ? '#00d9a3' : pid >= 4 ? '#ff6600' : pid >= 2 ? '#f5a800' : '#4488ff';
+        const isDone = pid === 10;
+        const isAb   = pid >= 4 && pid <= 8;
+        const isHoriz = pid >= 8;
+        badge.textContent = isDone  ? '✅ COMPLETADO' :
+                            isHoriz ? '🏁 HORIZONTAL' :
+                            isAb    ? '🔄 ABATIENDO' :
+                            pid >= 2 ? '⚙️ EN MANIOBRA' : '🔧 PREPARACIÓN';
+        badge.style.background = isDone  ? '#00d9a3' :
+                                 isHoriz ? '#8b5cf6' :
+                                 isAb    ? '#ff6600' :
+                                 pid >= 2 ? '#f5a800' : '#4488ff';
         badge.style.color = '#fff';
     }
 }
 
 // ── BOTONES ──
-document.getElementById('btn-play').onclick = () => { if (currentPhase >= PHASES.length - 1) { snapTo(0); currentPhase = 0; phaseTimer = 0; updateUI(0); } isPlaying = true; };
+document.getElementById('btn-play').onclick = () => {
+    if (currentPhase >= PHASES.length - 1) { snapTo(0); currentPhase = 0; phaseTimer = 0; updateUI(0); }
+    isPlaying = true;
+    kpiStartTime = kpiStartTime || Date.now();
+    // Auto-cámara al iniciar
+    if (autoCamEnabled) { const ck = PHASE_CAMS[currentPhase] || 'general'; setCam(ck); }
+};
 document.getElementById('btn-pause').onclick = () => { isPlaying = false; };
-document.getElementById('btn-next').onclick = () => { isPlaying = false; if (currentPhase < PHASES.length - 1) { snapTo(currentPhase); currentPhase++; phaseTimer = 0; updateUI(currentPhase); } };
-document.getElementById('btn-prev').onclick = () => { isPlaying = false; if (currentPhase > 0) { currentPhase--; phaseTimer = 0; snapTo(currentPhase); updateUI(currentPhase); } };
-document.getElementById('btn-reset').onclick = () => { isPlaying = false; currentPhase = 0; phaseTimer = 0; snapTo(0); updateUI(0); setCam('general'); document.querySelectorAll('.cam-btn').forEach((b, i) => i === 0 ? b.classList.add('active-cam') : b.classList.remove('active-cam')); };
+document.getElementById('btn-next').onclick = () => {
+    isPlaying = false;
+    if (currentPhase < PHASES.length - 1) {
+        snapTo(currentPhase); currentPhase++; phaseTimer = 0; updateUI(currentPhase);
+        if (autoCamEnabled) { const ck = PHASE_CAMS[currentPhase] || 'general'; setCam(ck); }
+    }
+};
+document.getElementById('btn-prev').onclick = () => {
+    isPlaying = false;
+    if (currentPhase > 0) {
+        currentPhase--; phaseTimer = 0; snapTo(currentPhase); updateUI(currentPhase);
+        if (autoCamEnabled) { const ck = PHASE_CAMS[currentPhase] || 'general'; setCam(ck); }
+    }
+};
+document.getElementById('btn-reset').onclick = () => {
+    isPlaying = false; currentPhase = 0; phaseTimer = 0;
+    simlogErrors = []; kpiStartTime = null; ceilingCollision = false;
+    snapTo(0); updateUI(0); setCam('general');
+    document.querySelectorAll('.cam-btn').forEach((b, i) => i === 0 ? b.classList.add('active-cam') : b.classList.remove('active-cam'));
+};
 
 // ── LOOP ──
 function tick(t) {
@@ -1476,29 +1521,40 @@ function tick(t) {
         const prog = Math.min(phaseTimer / dur, 1);
         animPhase(currentPhase, prog);
 
-        // ── COLISIÓN FÍSICA: hook block vs tubería contraincendio ──
-        // Si el lug superior del Expander supera el clearance mínimo (15 cm)
-        // respecto a la tubería contraincendio (y=7.80m) → PARAR SIMULACIÓN
+        // ── DETECCIÓN DE INTERFERENCIA (NO bloquea — solo alerta) ──
+        // El hook drop se reduce dinámicamente en los SNAPS para mantener clearance.
+        // La detección aquí es INFORMATIVA para el operador.
         const theta_now = S.rot;
-        const hLugSup = 0.5 + 6.0 * Math.cos(theta_now);
-        const clrNow = H_TUBERIA_CI - hLugSup - 0.25; // clearance actual
-        if (clrNow < H_CLEARANCE_MIN && !ceilingCollision) {
+        const hLugSup   = 0.5 + 6.0 * Math.cos(theta_now);
+        const clrNow    = Math.max(0, H_TUBERIA_CI - (hLugSup + 0.30));
+        if (clrNow < H_CLEARANCE_MIN && !ceilingCollision && currentPhase >= 4 && currentPhase <= 7) {
             ceilingCollision = true;
-            isPlaying = false;
-            // Activar alerta de colisión
-            const ab = document.getElementById('alert-box');
-            if (ab) { ab.style.display = 'flex'; }
             const at = document.getElementById('alert-text');
-            if (at) at.textContent = '🚨 COLISIÓN INMINENTE: Hook block a ' +
-                Math.max(0, clrNow * 100).toFixed(0) +
-                ' cm de tubería contraincendio. MANIOBRA DETENIDA. Ángulo máximo físico alcanzado.';
+            const ab = document.getElementById('alert-box');
+            if (at && ab) {
+                ab.style.display = 'flex';
+                at.textContent = '⚠️ Clearance crítico: ' + (clrNow * 100).toFixed(0) +
+                    ' cm vs tubería. Reducir velocidad. Continuar con supervisión.';
+            }
+            simlogErrors.push({ type: 'PROCEDURE', msg: 'Clearance mínimo activado en fase ' + currentPhase, phase: currentPhase });
         }
         if (clrNow >= H_CLEARANCE_MIN) ceilingCollision = false;
 
         if (prog >= 1) {
             snapTo(currentPhase);
-            if (currentPhase < PHASES.length - 1) { currentPhase++; phaseTimer = 0; updateUI(currentPhase); }
-            else { isPlaying = false; updateUI(currentPhase); }
+            // Auto-cámara al cambiar fase
+            if (autoCamEnabled) {
+                const nextPid = currentPhase + 1;
+                const ck = PHASE_CAMS[nextPid] || 'general';
+                setCam(ck);
+            }
+            if (currentPhase < PHASES.length - 1) {
+                currentPhase++; phaseTimer = 0; updateUI(currentPhase);
+            } else {
+                isPlaying = false; updateUI(currentPhase);
+                // Disparar evento de simulación completa
+                document.dispatchEvent(new Event('simulationComplete'));
+            }
         }
     }
 
